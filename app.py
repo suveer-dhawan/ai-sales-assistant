@@ -78,6 +78,26 @@ st.markdown("""
 def main():
     """Main application entry point."""
     
+    # Initialize session state
+    if 'sheets_oauth_url' not in st.session_state:
+        st.session_state.sheets_oauth_url = None
+    if 'gmail_oauth_url' not in st.session_state:
+        st.session_state.gmail_oauth_url = None
+    if 'show_sheets_auth' not in st.session_state:
+        st.session_state.show_sheets_auth = False
+    if 'show_gmail_auth' not in st.session_state:
+        st.session_state.show_gmail_auth = False
+    if 'show_sheets_auth_dashboard' not in st.session_state:
+        st.session_state.show_sheets_auth_dashboard = False
+    if 'sheets_connected' not in st.session_state:
+        st.session_state.sheets_connected = False
+    if 'show_import_leads' not in st.session_state:
+        st.session_state.show_import_leads = False
+    if 'show_start_campaign' not in st.session_state:
+        st.session_state.show_start_campaign = False
+    if 'show_reports' not in st.session_state:
+        st.session_state.show_reports = False
+    
     # Check authentication
     if not auth_manager.is_authenticated():
         show_login_page()
@@ -102,33 +122,73 @@ def show_login_page():
     with col2:
         st.markdown("### 🔐 Connect Your Accounts")
         
-        # Google OAuth buttons
-        if st.button("🔗 Connect Google Sheets", type="primary", use_container_width=True):
-            try:
-                sheets_url = auth_manager.get_oauth_url('sheets')
-                st.markdown(f"**Click here to authorize Google Sheets access:**")
-                st.markdown(f"[{sheets_url}]({sheets_url})")
-                st.info("After authorization, you'll be redirected back to the application.")
-            except Exception as e:
-                st.error(f"Failed to generate OAuth URL: {e}")
+        # Gmail OAuth (Primary - Required to start)
+        st.markdown("### 📧 Step 1: Connect Gmail (Required)")
+        st.info("""
+        **Gmail access is required to send personalized cold emails.**
+        This will allow the AI to send emails on your behalf and monitor responses.
+        """)
         
-        if st.button("📧 Connect Gmail", type="primary", use_container_width=True):
+        if st.button("🔐 Connect Gmail Account", type="primary", use_container_width=True):
             try:
                 gmail_url = auth_manager.get_oauth_url('gmail')
-                st.markdown(f"**Click here to authorize Gmail access:**")
-                st.markdown(f"[{gmail_url}]({gmail_url})")
-                st.info("After authorization, you'll be redirected back to the application.")
+                st.session_state.gmail_oauth_url = gmail_url
+                st.session_state.show_gmail_auth = True
+                st.rerun()
             except Exception as e:
                 st.error(f"Failed to generate OAuth URL: {e}")
         
-        # Manual OAuth callback handling
-        st.markdown("---")
-        st.markdown("### 🔄 Complete Authorization")
+        # Display Gmail OAuth when generated
+        if st.session_state.get('show_gmail_auth', False):
+            st.markdown("#### 📧 Gmail Authorization")
+            st.markdown("**Click the link below to authorize Gmail access:**")
+            st.markdown(f"[🔐 Authorize Gmail]({st.session_state.gmail_oauth_url})")
+            st.info("After authorization, you'll be redirected back to the application.")
+            if st.button("✅ I've Completed Gmail Authorization", key="gmail_done"):
+                st.session_state.show_gmail_auth = False
+                st.rerun()
         
-        auth_response = st.text_input("Paste the authorization response URL here:")
+        # Google Sheets OAuth (Secondary - Can be done later)
+        st.markdown("---")
+        st.markdown("### 📊 Step 2: Connect Google Sheets (Optional)")
+        st.info("""
+        **Google Sheets access allows you to import leads automatically.**
+        You can connect this now or later from the dashboard.
+        """)
+        
+        if st.button("🔗 Connect Google Sheets", type="secondary", use_container_width=True):
+            try:
+                sheets_url = auth_manager.get_oauth_url('sheets')
+                st.session_state.sheets_oauth_url = sheets_url
+                st.session_state.show_sheets_auth = True
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to generate OAuth URL: {e}")
+        
+        # Display Sheets OAuth when generated
+        if st.session_state.get('show_sheets_auth', False):
+            st.markdown("#### 📊 Google Sheets Authorization")
+            st.markdown("**Click the link below to authorize Google Sheets access:**")
+            st.markdown(f"[🔐 Authorize Google Sheets]({st.session_state.sheets_oauth_url})")
+            st.info("After authorization, you'll be redirected back to the application.")
+            if st.button("✅ I've Completed Sheets Authorization", key="sheets_done"):
+                st.session_state.show_sheets_auth = False
+                st.rerun()
+        
+        # Manual OAuth callback handling (for troubleshooting)
+        st.markdown("---")
+        st.markdown("### 🔄 Troubleshooting: Manual Authorization")
+        st.info("""
+        **If the automatic redirect isn't working, you can manually complete the authorization:**
+        1. Copy the full URL from your browser after authorization
+        2. Paste it below and click "Complete Setup"
+        3. This will manually process your authorization
+        """)
+        
+        auth_response = st.text_input("Paste the full authorization URL from your browser:")
         if st.button("Complete Setup", type="secondary"):
             if auth_response:
-                with st.spinner("Completing authorization..."):
+                with st.spinner("Processing authorization..."):
                     try:
                         # Determine service from URL
                         if "sheets" in auth_response:
@@ -136,15 +196,27 @@ def show_login_page():
                         elif "gmail" in auth_response:
                             success = asyncio.run(auth_manager.handle_oauth_callback('gmail', auth_response))
                         else:
-                            st.error("Unable to determine service from URL")
+                            st.error("Unable to determine service from URL. Please check the URL contains 'sheets' or 'gmail'.")
                             return
                         
                         if success:
-                            st.success("Authorization completed successfully! Please refresh the page.")
+                            st.success("🎉 Authorization completed successfully!")
+                            st.balloons()
+                            
+                            # Check which service was authenticated
+                            if "sheets" in auth_response:
+                                st.session_state.sheets_connected = True
+                                st.info("Google Sheets connected! You can now import leads.")
+                            elif "gmail" in auth_response:
+                                st.session_state.authenticated = True
+                                st.info("Gmail connected! Redirecting to dashboard...")
+                            
+                            st.rerun()
                         else:
-                            st.error("Authorization failed. Please try again.")
+                            st.error("❌ Authorization failed. Please try again or check the URL.")
                     except Exception as e:
                         st.error(f"Authorization error: {e}")
+                        st.error("Please make sure you copied the complete URL from your browser.")
             else:
                 st.warning("Please paste the authorization response URL.")
 
@@ -153,12 +225,18 @@ def show_main_application():
     
     # Sidebar navigation
     st.sidebar.title("🎯 AI Sales Assistant")
-    st.sidebar.markdown(f"**Welcome, {auth_manager.get_current_user_email()}!**")
+    
+    # Get user info for welcome message
+    user_email = auth_manager.get_current_user_email()
+    user_name = auth_manager.get_current_user_name() or user_email.split('@')[0] if user_email else "User"
+    
+    st.sidebar.markdown(f"**Welcome, {user_name}!**")
     
     # Navigation menu
     page = st.sidebar.selectbox(
         "Navigation",
-        ["📊 Dashboard", "👥 Lead Management", "📧 Campaigns", "🤖 AI Engine", "⚙️ Settings", "📈 Analytics"]
+        ["📊 Dashboard", "👥 Lead Management", "📧 Campaigns", "🤖 AI Engine", "⚙️ Settings", "📈 Analytics"],
+        key="nav_selectbox"
     )
     
     # Logout button
@@ -220,6 +298,38 @@ def show_dashboard():
         st.info("👥 3 new leads imported")
         st.info("🤖 AI generated 8 personalized emails")
     
+    # Google Sheets Connection (if not already connected)
+    st.markdown("### 🔗 Connect Google Sheets")
+    if not st.session_state.get('sheets_connected', False):
+        st.info("""
+        **Connect Google Sheets to automatically import leads and start campaigns.**
+        This allows the AI to pull lead data directly from your spreadsheets.
+        """)
+        
+        if st.button("🔐 Connect Google Sheets", type="primary"):
+            try:
+                sheets_url = auth_manager.get_oauth_url('sheets')
+                st.session_state.sheets_oauth_url = sheets_url
+                st.session_state.show_sheets_auth_dashboard = True
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to generate OAuth URL: {e}")
+        
+        if st.session_state.get('show_sheets_auth_dashboard', False):
+            st.markdown("#### 📊 Google Sheets Authorization")
+            st.markdown("**Click the link below to authorize Google Sheets access:**")
+            st.markdown(f"[🔐 Authorize Google Sheets]({st.session_state.sheets_oauth_url})")
+            st.info("After authorization, you'll be redirected back to the dashboard.")
+            if st.button("✅ I've Completed Sheets Authorization", key="sheets_dashboard_done"):
+                st.session_state.show_sheets_auth_dashboard = False
+                st.session_state.sheets_connected = True
+                st.rerun()
+    else:
+        st.success("✅ Google Sheets connected successfully!")
+        if st.button("🔄 Reconnect Google Sheets", type="secondary"):
+            st.session_state.sheets_connected = False
+            st.rerun()
+    
     # Quick actions
     st.markdown("### ⚡ Quick Actions")
     
@@ -227,15 +337,289 @@ def show_dashboard():
     
     with col1:
         if st.button("📥 Import Leads", type="primary", use_container_width=True):
-            st.info("Lead import feature coming soon!")
+            if st.session_state.get('sheets_connected', False):
+                st.session_state.show_import_leads = True
+                st.rerun()
+            else:
+                st.warning("Please connect Google Sheets first to import leads.")
     
     with col2:
         if st.button("🚀 Start Campaign", type="primary", use_container_width=True):
-            st.info("Campaign creation feature coming soon!")
+            if st.session_state.get('sheets_connected', False):
+                st.session_state.show_start_campaign = True
+                st.rerun()
+            else:
+                st.warning("Please connect Google Sheets first to start campaigns.")
     
     with col3:
         if st.button("📊 View Reports", type="primary", use_container_width=True):
-            st.info("Analytics reports coming soon!")
+            st.session_state.show_reports = True
+            st.rerun()
+    
+    # Import Leads Modal
+    if st.session_state.get('show_import_leads', False):
+        st.markdown("### 📥 Import Leads from Google Sheets")
+        
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            spreadsheet_id = st.text_input("Spreadsheet ID or URL:", 
+                help="Enter the spreadsheet ID from the URL or paste the full URL")
+            range_name = st.text_input("Range (e.g., A:Z):", value="A:Z")
+        
+        with col2:
+            st.markdown("#### 📋 Expected Columns")
+            st.markdown("""
+            - **A**: Name
+            - **B**: Email  
+            - **C**: Company
+            - **D**: Job Title
+            - **E**: Phone (optional)
+            - **F**: LinkedIn (optional)
+            - **G**: Pain Points (optional)
+            """)
+        
+        if st.button("🔍 Extract & Preview Leads", type="primary"):
+            if spreadsheet_id:
+                with st.spinner("Extracting leads from Google Sheets..."):
+                    try:
+                        # Extract spreadsheet ID if full URL was provided
+                        if 'docs.google.com' in spreadsheet_id:
+                            spreadsheet_id = spreadsheet_id.split('/')[5]
+                        
+                        leads = asyncio.run(integration_manager.sheets_api.extract_leads_from_sheet(
+                            spreadsheet_id, range_name
+                        ))
+                        
+                        if leads:
+                            st.success(f"Successfully extracted {len(leads)} leads!")
+                            
+                            # Display leads in a table
+                            leads_df = pd.DataFrame([
+                                {
+                                    'Name': lead.name,
+                                    'Email': lead.email,
+                                    'Company': lead.company,
+                                    'Job Title': lead.job_title,
+                                    'Phone': lead.phone or 'N/A',
+                                    'Pain Points': ', '.join(lead.pain_points) if lead.pain_points else 'N/A'
+                                }
+                                for lead in leads
+                            ])
+                            
+                            st.dataframe(leads_df, use_container_width=True)
+                            
+                            # Store leads for import
+                            st.session_state.extracted_leads = leads
+                            st.session_state.spreadsheet_id = spreadsheet_id
+                            
+                            if st.button("💾 Import to Database", type="secondary"):
+                                with st.spinner("Importing leads..."):
+                                    try:
+                                        # Convert to database format and import
+                                        imported_count = 0
+                                        for lead in leads:
+                                            lead_data = {
+                                                'lead_id': f"lead_{int(time.time() * 1000)}_{imported_count}",
+                                                'user_id': auth_manager.get_current_user_id(),
+                                                'name': lead.name,
+                                                'email': lead.email,
+                                                'company': lead.company,
+                                                'job_title': lead.job_title,
+                                                'phone': lead.phone,
+                                                'linkedin_url': getattr(lead, 'linkedin_url', None),
+                                                'company_description': getattr(lead, 'company_description', None),
+                                                'pain_points': lead.pain_points,
+                                                'source': 'google_sheets',
+                                                'imported_at': datetime.utcnow(),
+                                                'status': 'new'
+                                            }
+                                            
+                                            asyncio.run(db_manager.create_lead(lead_data))
+                                            imported_count += 1
+                                        
+                                        st.success(f"✅ Successfully imported {imported_count} leads!")
+                                        st.session_state.show_import_leads = False
+                                        st.rerun()
+                                        
+                                    except Exception as e:
+                                        st.error(f"Failed to import leads: {e}")
+                        else:
+                            st.warning("No leads found in the specified range.")
+                            
+                    except Exception as e:
+                        st.error(f"Failed to extract leads: {e}")
+            else:
+                st.warning("Please enter a spreadsheet ID or URL.")
+        
+        if st.button("❌ Cancel", type="secondary"):
+            st.session_state.show_import_leads = False
+            st.rerun()
+    
+    # Start Campaign Modal
+    if st.session_state.get('show_start_campaign', False):
+        st.markdown("### 🚀 Start Email Campaign")
+        
+        # Get user's leads
+        try:
+            user_leads = asyncio.run(db_manager.get_leads(auth_manager.get_current_user_id()))
+            
+            if user_leads:
+                st.success(f"Found {len(user_leads)} leads for your campaign!")
+                
+                # Campaign settings
+                campaign_name = st.text_input("Campaign Name:", value="Cold Email Campaign")
+                email_subject = st.text_input("Email Subject Line:", value="Quick question about {company}")
+                
+                # Lead selection
+                st.markdown("#### 👥 Select Leads")
+                selected_leads = []
+                for lead in user_leads[:10]:  # Show first 10 leads
+                    if st.checkbox(f"{lead.name} - {lead.company} ({lead.job_title})", key=f"lead_{lead.lead_id}"):
+                        selected_leads.append(lead)
+                
+                if selected_leads:
+                    st.info(f"Selected {len(selected_leads)} leads for the campaign")
+                    
+                    if st.button("🚀 Start Campaign", type="primary"):
+                        with st.spinner("Starting campaign..."):
+                            try:
+                                # Create campaign
+                                campaign_data = {
+                                    'campaign_id': f"campaign_{int(time.time() * 1000)}",
+                                    'user_id': auth_manager.get_current_user_id(),
+                                    'name': campaign_name,
+                                    'status': 'running',
+                                    'created_at': datetime.utcnow(),
+                                    'lead_count': len(selected_leads)
+                                }
+                                
+                                campaign_id = asyncio.run(automation_manager.create_campaign(campaign_data))
+                                
+                                # Process leads and send emails
+                                emails_sent = 0
+                                for lead in selected_leads:
+                                    try:
+                                        # Generate personalized email
+                                        email_content = asyncio.run(ai_engine.generate_cold_email(lead, {}))
+                                        
+                                        if email_content and email_content.success:
+                                            # Send email
+                                            email_result = asyncio.run(integration_manager.gmail_api.send_email(
+                                                to_email=lead.email,
+                                                subject=email_subject.replace('{company}', lead.company),
+                                                body=email_content.content,
+                                                from_name=auth_manager.get_current_user_name()
+                                            ))
+                                            
+                                            if email_result.success:
+                                                emails_sent += 1
+                                                
+                                                # Store email record
+                                                email_data = {
+                                                    'email_id': f"email_{int(time.time() * 1000)}_{emails_sent}",
+                                                    'campaign_id': campaign_id,
+                                                    'lead_id': lead.lead_id,
+                                                    'user_id': auth_manager.get_current_user_id(),
+                                                    'subject': email_subject,
+                                                    'body': email_content.content,
+                                                    'email_type': 'campaign',
+                                                    'status': 'sent',
+                                                    'sent_at': datetime.utcnow()
+                                                }
+                                                
+                                                asyncio.run(db_manager.create_email(email_data))
+                                                
+                                    except Exception as e:
+                                        st.error(f"Failed to process lead {lead.name}: {e}")
+                                
+                                st.success(f"🎉 Campaign started successfully! {emails_sent} emails sent.")
+                                st.session_state.show_start_campaign = False
+                                st.rerun()
+                                
+                            except Exception as e:
+                                st.error(f"Failed to start campaign: {e}")
+                else:
+                    st.warning("Please select at least one lead for the campaign.")
+            else:
+                st.warning("No leads found. Please import leads first.")
+                
+        except Exception as e:
+            st.error(f"Failed to get leads: {e}")
+        
+        if st.button("❌ Cancel", type="secondary"):
+            st.session_state.show_start_campaign = False
+            st.rerun()
+    
+    # View Reports Modal
+    if st.session_state.get('show_reports', False):
+        st.markdown("### 📊 Lead Analytics & Reports")
+        
+        try:
+            # Get user's leads
+            user_leads = asyncio.run(db_manager.get_leads(auth_manager.get_current_user_id()))
+            
+            if user_leads:
+                # Lead scoring analysis
+                st.markdown("#### 🎯 Lead Scoring Analysis")
+                
+                hot_leads = [lead for lead in user_leads if getattr(lead, 'score', 0) >= 0.8]
+                warm_leads = [lead for lead in user_leads if 0.5 <= getattr(lead, 'score', 0) < 0.8]
+                cold_leads = [lead for lead in user_leads if getattr(lead, 'score', 0) < 0.5]
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🔥 Hot Leads", len(hot_leads), f"{len(hot_leads)/len(user_leads)*100:.1f}%")
+                with col2:
+                    st.metric("🌡️ Warm Leads", len(warm_leads), f"{len(warm_leads)/len(user_leads)*100:.1f}%")
+                with col3:
+                    st.metric("❄️ Cold Leads", len(cold_leads), f"{len(cold_leads)/len(user_leads)*100:.1f}%")
+                
+                # Lead details table
+                st.markdown("#### 📋 Lead Details")
+                
+                leads_data = []
+                for lead in user_leads:
+                    score = getattr(lead, 'score', 0)
+                    if score >= 0.8:
+                        status = "🔥 Hot"
+                    elif score >= 0.5:
+                        status = "🌡️ Warm"
+                    else:
+                        status = "❄️ Cold"
+                    
+                    leads_data.append({
+                        'Name': lead.name,
+                        'Company': lead.company,
+                        'Job Title': lead.job_title,
+                        'Email': lead.email,
+                        'Score': f"{score:.2f}",
+                        'Status': status,
+                        'Phone': getattr(lead, 'phone', 'N/A'),
+                        'Pain Points': ', '.join(getattr(lead, 'pain_points', [])) if getattr(lead, 'pain_points', []) else 'N/A'
+                    })
+                
+                leads_df = pd.DataFrame(leads_data)
+                st.dataframe(leads_df, use_container_width=True)
+                
+                # Export functionality
+                if st.button("📥 Export to CSV", type="secondary"):
+                    csv = leads_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download CSV",
+                        data=csv,
+                        file_name=f"leads_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv"
+                    )
+                
+            else:
+                st.info("No leads found. Import some leads to see analytics!")
+                
+        except Exception as e:
+            st.error(f"Failed to generate reports: {e}")
+        
+        if st.button("❌ Close Reports", type="secondary"):
+            st.session_state.show_reports = False
+            st.rerun()
 
 def show_lead_management():
     """Display lead management interface."""

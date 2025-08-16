@@ -12,6 +12,7 @@ Used by: app.py, integrations.py, database.py
 import logging
 import json
 import time
+import os
 from typing import Dict, Optional, Any, Tuple
 from datetime import datetime, timedelta
 from dataclasses import dataclass
@@ -21,6 +22,10 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google.oauth2 import service_account
 import requests
+from urllib.parse import urlparse, parse_qs
+
+# Allow HTTP for localhost development (OAuth 2.0 requirement)
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 from config import config
 from database import db_manager, User
@@ -68,19 +73,22 @@ class AuthManager:
                 client_secret = self.api_config.gmail_client_secret
                 redirect_uri = self.api_config.gmail_redirect_uri
                 scopes = [
-                    'https://www.googleapis.com/auth/gmail.send',
-                    'https://www.googleapis.com/auth/gmail.readonly',
+                    'openid',
                     'https://www.googleapis.com/auth/userinfo.email',
-                    'https://www.googleapis.com/auth/userinfo.profile'
+                    'https://www.googleapis.com/auth/userinfo.profile',
+                    'https://www.googleapis.com/auth/gmail.send',
+                    'https://www.googleapis.com/auth/gmail.readonly'
                 ]
             elif service == 'sheets':
                 client_id = self.api_config.sheets_client_id
                 client_secret = self.api_config.sheets_client_secret
                 redirect_uri = self.api_config.sheets_redirect_uri
                 scopes = [
-                    'https://www.googleapis.com/auth/spreadsheets.readonly',
+                    'openid',
                     'https://www.googleapis.com/auth/userinfo.email',
-                    'https://www.googleapis.com/auth/userinfo.profile'
+                    'https://www.googleapis.com/auth/userinfo.profile',
+                    'https://www.googleapis.com/auth/spreadsheets',
+                    'https://www.googleapis.com/auth/spreadsheets.readonly'
                 ]
             else:
                 raise ValueError(f"Unsupported service: {service}")
@@ -100,6 +108,7 @@ class AuthManager:
             )
             
             flow.redirect_uri = redirect_uri
+            
             auth_url, _ = flow.authorization_url(
                 access_type='offline',
                 include_granted_scopes='true',
@@ -121,19 +130,22 @@ class AuthManager:
                 client_secret = self.api_config.gmail_client_secret
                 redirect_uri = self.api_config.gmail_redirect_uri
                 scopes = [
-                    'https://www.googleapis.com/auth/gmail.send',
-                    'https://www.googleapis.com/auth/gmail.readonly',
+                    'openid',
                     'https://www.googleapis.com/auth/userinfo.email',
-                    'https://www.googleapis.com/auth/userinfo.profile'
+                    'https://www.googleapis.com/auth/userinfo.profile',
+                    'https://www.googleapis.com/auth/gmail.send',
+                    'https://www.googleapis.com/auth/gmail.readonly'
                 ]
             elif service == 'sheets':
                 client_id = self.api_config.sheets_client_id
                 client_secret = self.api_config.sheets_client_secret
                 redirect_uri = self.api_config.sheets_redirect_uri
                 scopes = [
-                    'https://www.googleapis.com/auth/spreadsheets.readonly',
+                    'openid',
                     'https://www.googleapis.com/auth/userinfo.email',
-                    'https://www.googleapis.com/auth/userinfo.profile'
+                    'https://www.googleapis.com/auth/userinfo.profile',
+                    'https://www.googleapis.com/auth/spreadsheets',
+                    'https://www.googleapis.com/auth/spreadsheets.readonly'
                 ]
             else:
                 raise ValueError(f"Unsupported service: {service}")
@@ -154,8 +166,20 @@ class AuthManager:
             
             flow.redirect_uri = redirect_uri
             
+            # Extract authorization code from the callback URL
+            
+            # Parse the callback URL to extract the authorization code
+            parsed_url = urlparse(authorization_response)
+            query_params = parse_qs(parsed_url.query)
+            
+            authorization_code = query_params.get('code', [None])[0]
+            if not authorization_code:
+                raise ValueError("No authorization code found in callback URL")
+            
+            logger.info(f"Extracted authorization code: {authorization_code[:20]}...")
+            
             # Exchange authorization code for tokens
-            flow.fetch_token(authorization_response=authorization_response)
+            flow.fetch_token(code=authorization_code)
             credentials = flow.credentials
             
             # Store tokens in session state
@@ -174,11 +198,21 @@ class AuthManager:
             # Get user info and authenticate
             await self._authenticate_user(credentials)
             
+            # Set service-specific authentication status
+            if service == 'gmail':
+                self.session_state.gmail_authenticated = True
+                logger.info("Gmail authentication completed successfully")
+            elif service == 'sheets':
+                self.session_state.sheets_authenticated = True
+                logger.info("Google Sheets authentication completed successfully")
+            
             logger.info(f"OAuth callback handled successfully for {service}")
             return True
             
         except Exception as e:
             logger.error(f"Failed to handle OAuth callback for {service}: {e}")
+            logger.error(f"Authorization response: {authorization_response[:200]}...")
+            logger.error(f"Service: {service}, Client ID: {client_id[:10]}...")
             return False
     
     async def _authenticate_user(self, credentials: Credentials):
@@ -218,6 +252,7 @@ class AuthManager:
             self.session_state.authenticated = True
             self.session_state.user_id = user_info['id']
             self.session_state.user_email = user_info['email']
+            self.session_state.user_name = user_info.get('name', user_info['email'].split('@')[0])
             self.session_state.last_auth_check = datetime.utcnow()
             
         except Exception as e:
@@ -267,6 +302,12 @@ class AuthManager:
         """Get current authenticated user email."""
         if self.is_authenticated():
             return self.session_state.user_email
+        return None
+    
+    def get_current_user_name(self) -> Optional[str]:
+        """Get current authenticated user name."""
+        if self.is_authenticated():
+            return self.session_state.user_name
         return None
     
     def get_oauth_tokens(self) -> Optional[OAuthTokens]:
