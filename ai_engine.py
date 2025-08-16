@@ -738,22 +738,614 @@ class ResponseAnalysisEngine:
             )
 
 class AIEngine:
-    """Main AI engine that coordinates all AI capabilities."""
+    """Main AI engine that coordinates all AI capabilities for sales automation."""
     
     def __init__(self):
         self.lead_scoring = LeadScoringEngine()
         self.personalization = EmailPersonalizationEngine()
         self.response_analysis = ResponseAnalysisEngine()
+        self.gemini_api = integration_manager.gemini_api
         logger.info("AI engine initialized successfully")
+    
+    # =============================================================================
+    # CORE SALES AUTOMATION FUNCTIONS
+    # =============================================================================
+    
+    async def generate_cold_email(self, lead_data: LeadData, user_settings: Dict[str, Any]) -> AIResponse:
+        """
+        Generate completely unique, personalized cold email for sales automation.
+        
+        Args:
+            lead_data: Lead information including job title, company, pain points
+            user_settings: User's sales approach, value proposition, calendly link
+            
+        Returns:
+            AIResponse with personalized email content including subject line
+        """
+        try:
+            # Analyze job title and company for pain points
+            job_analysis = await self.analyze_job_title(lead_data.job_title, lead_data.company)
+            
+            # Create comprehensive prompt for cold email generation
+            prompt = self._create_cold_email_prompt(lead_data, job_analysis, user_settings)
+            
+            # Generate email using Gemini AI
+            response = await self.gemini_api.generate_content(prompt, {
+                'lead_name': lead_data.name,
+                'job_title': lead_data.job_title,
+                'company': lead_data.company,
+                'pain_points': lead_data.pain_points,
+                'company_description': lead_data.company_description
+            })
+            
+            if response.success:
+                logger.info(f"Cold email generated successfully for {lead_data.email}")
+                
+                # Parse and structure the response
+                parsed_response = self._parse_email_response(response.content)
+                return AIResponse(
+                    success=True,
+                    content=parsed_response['email_body'],
+                    metadata={
+                        'subject_line': parsed_response['subject_line'],
+                        'personalization_score': parsed_response['personalization_score'],
+                        'pain_points_addressed': parsed_response['pain_points_addressed'],
+                        'calendly_integration': parsed_response['calendly_integration']
+                    }
+                )
+            else:
+                logger.error(f"Failed to generate cold email: {response.error_message}")
+                return response
+                
+        except Exception as e:
+            logger.error(f"Cold email generation failed: {e}")
+            return AIResponse(
+                success=False,
+                error_message=f"Cold email generation failed: {str(e)}"
+            )
+    
+    async def classify_response(self, email_content: str) -> AIResponse:
+        """
+        Analyze reply sentiment and intent for automated follow-up decisions.
+        
+        Args:
+            email_content: The email response content to analyze
+            
+        Returns:
+            AIResponse with classification, confidence score, and reasoning
+        """
+        try:
+            prompt = self._create_response_classification_prompt(email_content)
+            
+            response = await self.gemini_api.generate_content(prompt, {
+                'email_content': email_content
+            })
+            
+            if response.success:
+                # Parse the structured response
+                classification_data = self._parse_classification_response(response.content)
+                
+                return AIResponse(
+                    success=True,
+                    content=json.dumps(classification_data, indent=2),
+                    metadata={
+                        'classification': classification_data.get('classification'),
+                        'confidence_score': classification_data.get('confidence_score'),
+                        'sentiment': classification_data.get('sentiment'),
+                        'urgency_level': classification_data.get('urgency_level')
+                    }
+                )
+            else:
+                logger.error(f"Response classification failed: {response.error_message}")
+                return response
+                
+        except Exception as e:
+            logger.error(f"Response classification failed: {e}")
+            return AIResponse(
+                success=False,
+                error_message=f"Response classification failed: {str(e)}"
+            )
+    
+    async def score_lead(self, lead_data: LeadData) -> LeadScore:
+        """
+        Comprehensive lead scoring with Hot/Warm/Cold classification.
+        
+        Args:
+            lead_data: Lead information for scoring analysis
+            
+        Returns:
+            LeadScore with classification, score, and detailed reasoning
+        """
+        try:
+            # Use existing ML-based scoring
+            ml_score = await self.lead_scoring.score_lead(lead_data)
+            
+            # Enhanced scoring with AI analysis
+            ai_analysis = await self._enhance_lead_scoring_with_ai(lead_data)
+            
+            # Combine ML and AI scores
+            final_score = (ml_score.score * 0.6) + (ai_analysis.get('ai_score', 0.5) * 0.4)
+            
+            # Determine classification
+            if final_score >= 0.8:
+                classification = "Hot"
+                priority = "Immediate follow-up"
+            elif final_score >= 0.6:
+                classification = "Warm"
+                priority = "Standard sequence"
+            else:
+                classification = "Cold"
+                priority = "Nurturing campaign"
+            
+            # Create enhanced lead score
+            enhanced_score = LeadScore(
+                lead_id=getattr(lead_data, 'lead_id', 'unknown'),
+                score=final_score,
+                factors={
+                    **ml_score.factors,
+                    'ai_analysis_score': ai_analysis.get('ai_score', 0.0),
+                    'decision_authority': ai_analysis.get('decision_authority', 0.0),
+                    'company_relevance': ai_analysis.get('company_relevance', 0.0)
+                },
+                confidence=ml_score.confidence,
+                recommendations=[
+                    f"Classification: {classification}",
+                    f"Priority: {priority}",
+                    *ai_analysis.get('recommendations', []),
+                    *ml_score.recommendations
+                ]
+            )
+            
+            logger.info(f"Enhanced lead scoring completed: {classification} ({final_score:.3f})")
+            return enhanced_score
+            
+        except Exception as e:
+            logger.error(f"Enhanced lead scoring failed: {e}")
+            # Fallback to basic scoring
+            return await self.lead_scoring.score_lead(lead_data)
+    
+    async def generate_followup_email(self, lead_data: LeadData, previous_emails: List[Dict[str, Any]], 
+                                    sequence_step: int) -> AIResponse:
+        """
+        Generate context-aware follow-up email with progressive value delivery.
+        
+        Args:
+            lead_data: Lead information
+            previous_emails: List of previous email interactions
+            sequence_step: Current step in the follow-up sequence
+            
+        Returns:
+            AIResponse with personalized follow-up email
+        """
+        try:
+            # Analyze previous interactions
+            interaction_context = self._analyze_interaction_context(previous_emails, sequence_step)
+            
+            # Create follow-up specific prompt
+            prompt = self._create_followup_prompt(lead_data, interaction_context, sequence_step)
+            
+            # Generate follow-up email
+            response = await self.gemini_api.generate_content(prompt, {
+                'lead_name': lead_data.name,
+                'sequence_step': sequence_step,
+                'previous_context': interaction_context
+            })
+            
+            if response.success:
+                logger.info(f"Follow-up email generated for step {sequence_step}")
+                
+                # Parse and structure the response
+                parsed_response = self._parse_email_response(response.content)
+                return AIResponse(
+                    success=True,
+                    content=parsed_response['email_body'],
+                    metadata={
+                        'subject_line': parsed_response['subject_line'],
+                        'sequence_step': sequence_step,
+                        'urgency_level': parsed_response.get('urgency_level', 'medium'),
+                        'value_proposition': parsed_response.get('value_proposition', ''),
+                        'next_action': parsed_response.get('next_action', '')
+                    }
+                )
+            else:
+                logger.error(f"Follow-up generation failed: {response.error_message}")
+                return response
+                
+        except Exception as e:
+            logger.error(f"Follow-up generation failed: {e}")
+            return AIResponse(
+                success=False,
+                error_message=f"Follow-up generation failed: {str(e)}"
+            )
+    
+    async def analyze_job_title(self, job_title: str, company: str) -> Dict[str, Any]:
+        """
+        Comprehensive job title analysis for personalization and pain point identification.
+        
+        Args:
+            job_title: The job title to analyze
+            company: Company name for context
+            
+        Returns:
+            Dictionary with analysis results
+        """
+        try:
+            prompt = self._create_job_title_analysis_prompt(job_title, company)
+            
+            response = await self.gemini_api.generate_content(prompt, {
+                'job_title': job_title,
+                'company': company
+            })
+            
+            if response.success:
+                # Parse the structured response
+                analysis_data = self._parse_job_analysis_response(response.content)
+                
+                logger.info(f"Job title analysis completed for {job_title}")
+                return analysis_data
+            else:
+                logger.error(f"Job title analysis failed: {response.error_message}")
+                return self._fallback_job_analysis(job_title, company)
+                
+        except Exception as e:
+            logger.error(f"Job title analysis failed: {e}")
+            return self._fallback_job_analysis(job_title, company)
+    
+    # =============================================================================
+    # PROMPT CREATION METHODS
+    # =============================================================================
+    
+    def _create_cold_email_prompt(self, lead_data: LeadData, job_analysis: Dict[str, Any], 
+                                 user_settings: Dict[str, Any]) -> str:
+        """Create comprehensive prompt for cold email generation."""
+        return f"""
+        You are an expert sales professional writing a personalized cold email. Your goal is to create a completely unique, compelling email that addresses the recipient's specific situation.
+
+        LEAD INFORMATION:
+        - Name: {lead_data.name}
+        - Job Title: {lead_data.job_title}
+        - Company: {lead_data.company}
+        - Company Description: {lead_data.company_description or 'Not provided'}
+        - Pain Points: {', '.join(lead_data.pain_points) if lead_data.pain_points else 'To be identified'}
+
+        JOB ANALYSIS:
+        - Seniority Level: {job_analysis.get('seniority_level', 'Unknown')}
+        - Decision Authority: {job_analysis.get('decision_authority', 'Unknown')}
+        - Likely Pain Points: {', '.join(job_analysis.get('likely_pain_points', []))}
+        - Industry Context: {job_analysis.get('industry_context', 'Unknown')}
+
+        USER SETTINGS:
+        - Value Proposition: {user_settings.get('value_proposition', 'To be customized')}
+        - Calendly Link: {user_settings.get('calendly_link', 'To be included')}
+        - Sales Approach: {user_settings.get('sales_approach', 'Professional and consultative')}
+
+        REQUIREMENTS:
+        1. Create a compelling subject line (max 60 characters)
+        2. Write a personalized email body (max 150 words)
+        3. Address specific pain points based on their role and company
+        4. Include the Calendly link naturally in the flow
+        5. End with a clear, specific call-to-action
+        6. Use their name naturally throughout
+        7. Reference their company and role specifically
+        8. Avoid generic templates - make it completely unique
+
+        FORMAT YOUR RESPONSE AS JSON:
+        {{
+            "subject_line": "Your compelling subject line",
+            "email_body": "Your personalized email content",
+            "personalization_score": 0.95,
+            "pain_points_addressed": ["pain point 1", "pain point 2"],
+            "calendly_integration": "How the calendly link was integrated"
+        }}
+
+        Remember: This email should feel like it was written specifically for {lead_data.name} at {lead_data.company}, not a mass email.
+        """
+    
+    def _create_response_classification_prompt(self, email_content: str) -> str:
+        """Create prompt for email response classification."""
+        return f"""
+        You are an expert sales professional analyzing an email response to determine the next action.
+
+        EMAIL CONTENT:
+        {email_content}
+
+        TASK:
+        Analyze this email response and classify it into one of these categories:
+        1. INTERESTED - Shows genuine interest, asks questions, wants to learn more
+        2. NOT_INTERESTED - Clearly states they're not interested, no further contact
+        3. NEUTRAL - Polite but non-committal, needs more information
+        4. OUT_OF_OFFICE - Automated response, person unavailable
+        5. NEEDS_MORE_INFO - Interested but needs specific details
+        6. OBJECTION - Has concerns that need to be addressed
+
+        FOR EACH CLASSIFICATION, PROVIDE:
+        - Classification category
+        - Confidence score (0-100)
+        - Sentiment (positive/negative/neutral)
+        - Key points mentioned
+        - Urgency level (low/medium/high)
+        - Recommended next action
+        - Reasoning for your decision
+
+        FORMAT YOUR RESPONSE AS JSON:
+        {{
+            "classification": "INTERESTED",
+            "confidence_score": 85,
+            "sentiment": "positive",
+            "key_points": ["point 1", "point 2"],
+            "urgency_level": "medium",
+            "recommended_next_action": "Send detailed proposal within 24 hours",
+            "reasoning": "Clear interest shown through specific questions about pricing and implementation"
+        }}
+
+        Be precise and actionable in your analysis.
+        """
+    
+    def _create_followup_prompt(self, lead_data: LeadData, interaction_context: Dict[str, Any], 
+                               sequence_step: int) -> str:
+        """Create prompt for follow-up email generation."""
+        return f"""
+        You are an expert sales professional writing a follow-up email in a sequence. This is step {sequence_step} in the follow-up process.
+
+        LEAD INFORMATION:
+        - Name: {lead_data.name}
+        - Job Title: {lead_data.job_title}
+        - Company: {lead_data.company}
+
+        PREVIOUS INTERACTIONS:
+        {json.dumps(interaction_context, indent=2)}
+
+        FOLLOW-UP STRATEGY:
+        - Step {sequence_step}: {self._get_followup_strategy(sequence_step)}
+        - Goal: {self._get_followup_goal(sequence_step)}
+        - Tone: {self._get_followup_tone(sequence_step)}
+
+        REQUIREMENTS:
+        1. Reference previous communication naturally
+        2. Provide additional value or insights
+        3. Address any objections or concerns raised
+        4. Include appropriate urgency based on their engagement
+        5. End with a clear next step
+        6. Keep it concise (max 100 words)
+        7. Make it feel personal and relevant
+
+        FORMAT YOUR RESPONSE AS JSON:
+        {{
+            "email_body": "Your follow-up email content",
+            "subject_line": "Your follow-up subject line",
+            "urgency_level": "medium",
+            "value_proposition": "What value you're providing",
+            "next_action": "What you want them to do next"
+        }}
+
+        Remember: Each follow-up should build on the previous interaction and move the conversation forward.
+        """
+    
+    def _create_job_title_analysis_prompt(self, job_title: str, company: str) -> str:
+        """Create prompt for job title analysis."""
+        return f"""
+        You are an expert business analyst specializing in organizational structures and job roles.
+
+        ANALYZE THIS JOB TITLE:
+        - Job Title: {job_title}
+        - Company: {company}
+
+        PROVIDE ANALYSIS ON:
+        1. Seniority Level (Junior/Mid/Senior/Executive)
+        2. Decision Authority (Low/Medium/High)
+        3. Likely Pain Points (based on their role)
+        4. Industry Context and Trends
+        5. Personalization Opportunities
+        6. Influence Level in Purchasing Decisions
+
+        FOR EACH CATEGORY, PROVIDE:
+        - Score (0-100)
+        - Reasoning
+        - Specific examples or insights
+
+        FORMAT YOUR RESPONSE AS JSON:
+        {{
+            "seniority_level": "Senior",
+            "seniority_score": 75,
+            "decision_authority": "Medium",
+            "decision_score": 60,
+            "likely_pain_points": ["pain point 1", "pain point 2"],
+            "industry_context": "Technology sector insights",
+            "personalization_opportunities": ["opportunity 1", "opportunity 2"],
+            "influence_level": "Medium",
+            "overall_score": 70,
+            "reasoning": "Detailed explanation of your analysis"
+        }}
+
+        Be specific and actionable in your analysis.
+        """
+    
+    # =============================================================================
+    # HELPER METHODS
+    # =============================================================================
+    
+    def _parse_email_response(self, content: str) -> Dict[str, Any]:
+        """Parse AI-generated email response."""
+        try:
+            if isinstance(content, str):
+                # Try to parse JSON response
+                try:
+                    return json.loads(content)
+                except json.JSONDecodeError:
+                    # Fallback parsing for non-JSON responses
+                    return {
+                        'email_body': content,
+                        'subject_line': 'Reaching out about your business',
+                        'personalization_score': 0.8,
+                        'pain_points_addressed': [],
+                        'calendly_integration': 'Standard integration'
+                    }
+            return content
+        except Exception as e:
+            logger.error(f"Failed to parse email response: {e}")
+            return {
+                'email_body': content,
+                'subject_line': 'Reaching out about your business',
+                'personalization_score': 0.5,
+                'pain_points_addressed': [],
+                'calendly_integration': 'Standard integration'
+            }
+    
+    def _parse_classification_response(self, content: str) -> Dict[str, Any]:
+        """Parse AI-generated classification response."""
+        try:
+            if isinstance(content, str):
+                try:
+                    return json.loads(content)
+                except json.JSONDecodeError:
+                    return self._fallback_classification()
+            return content
+        except Exception as e:
+            logger.error(f"Failed to parse classification response: {e}")
+            return self._fallback_classification()
+    
+    def _parse_job_analysis_response(self, content: str) -> Dict[str, Any]:
+        """Parse AI-generated job analysis response."""
+        try:
+            if isinstance(content, str):
+                try:
+                    return json.loads(content)
+                except json.JSONDecodeError:
+                    return self._fallback_job_analysis("Unknown", "Unknown")
+            return content
+        except Exception as e:
+            logger.error(f"Failed to parse job analysis response: {e}")
+            return self._fallback_job_analysis("Unknown", "Unknown")
+    
+    def _fallback_classification(self) -> Dict[str, Any]:
+        """Fallback classification when AI analysis fails."""
+        return {
+            'classification': 'NEUTRAL',
+            'confidence_score': 50,
+            'sentiment': 'neutral',
+            'key_points': ['Fallback analysis used'],
+            'urgency_level': 'low',
+            'recommended_next_action': 'Manual review required',
+            'reasoning': 'AI analysis failed, manual review needed'
+        }
+    
+    def _fallback_job_analysis(self, job_title: str, company: str) -> Dict[str, Any]:
+        """Fallback job analysis when AI analysis fails."""
+        return {
+            'seniority_level': 'Unknown',
+            'seniority_score': 50,
+            'decision_authority': 'Unknown',
+            'decision_score': 50,
+            'likely_pain_points': ['General business challenges'],
+            'industry_context': 'General business context',
+            'personalization_opportunities': ['Standard personalization'],
+            'influence_level': 'Unknown',
+            'overall_score': 50,
+            'reasoning': 'Fallback analysis due to AI failure'
+        }
+    
+    def _analyze_interaction_context(self, previous_emails: List[Dict[str, Any]], sequence_step: int) -> Dict[str, Any]:
+        """Analyze previous email interactions for context."""
+        try:
+            if not previous_emails:
+                return {'context': 'No previous interactions', 'engagement_level': 'low'}
+            
+            # Analyze engagement patterns
+            engagement_levels = [email.get('engagement_score', 0.5) for email in previous_emails]
+            avg_engagement = sum(engagement_levels) / len(engagement_levels)
+            
+            # Get last interaction details
+            last_email = previous_emails[-1]
+            
+            return {
+                'context': f'Step {sequence_step-1} completed',
+                'engagement_level': 'high' if avg_engagement > 0.7 else 'medium' if avg_engagement > 0.4 else 'low',
+                'last_interaction': last_email.get('content', ''),
+                'last_sentiment': last_email.get('sentiment', 'neutral'),
+                'response_time': last_email.get('response_time', 'unknown'),
+                'key_points': last_email.get('key_points', [])
+            }
+        except Exception as e:
+            logger.error(f"Failed to analyze interaction context: {e}")
+            return {'context': 'Context analysis failed', 'engagement_level': 'unknown'}
+    
+    def _get_followup_strategy(self, step: int) -> str:
+        """Get follow-up strategy for specific step."""
+        strategies = {
+            1: "Value reinforcement and objection handling",
+            2: "Social proof and case studies",
+            3: "Urgency and limited-time offer",
+            4: "Final attempt with alternative approach",
+            5: "Last chance with strongest value proposition"
+        }
+        return strategies.get(step, "Standard follow-up approach")
+    
+    def _get_followup_goal(self, step: int) -> str:
+        """Get follow-up goal for specific step."""
+        goals = {
+            1: "Address concerns and provide additional value",
+            2: "Build credibility and trust",
+            3: "Create urgency and encourage action",
+            4: "Try different approach or angle",
+            5: "Final attempt to engage or close"
+        }
+        return goals.get(step, "Continue engagement")
+    
+    def _get_followup_tone(self, step: int) -> str:
+        """Get follow-up tone for specific step."""
+        tones = {
+            1: "Professional and helpful",
+            2: "Confident and credible",
+            3: "Urgent but respectful",
+            4: "Creative and different",
+            5: "Direct and final"
+        }
+        return tones.get(step, "Professional")
+    
+    async def _enhance_lead_scoring_with_ai(self, lead_data: LeadData) -> Dict[str, Any]:
+        """Enhance ML scoring with AI analysis."""
+        try:
+            # Analyze job title and company
+            job_analysis = await self.analyze_job_title(lead_data.job_title, lead_data.company)
+            
+            # Calculate AI-based scores
+            decision_authority = job_analysis.get('decision_score', 50) / 100
+            company_relevance = 0.7  # Placeholder for company analysis
+            
+            # Combine factors for AI score
+            ai_score = (decision_authority * 0.4) + (company_relevance * 0.3) + (0.3)  # Base score
+            
+            return {
+                'ai_score': ai_score,
+                'decision_authority': decision_authority,
+                'company_relevance': company_relevance,
+                'recommendations': [
+                    f"Decision authority: {decision_authority:.1%}",
+                    f"Company relevance: {company_relevance:.1%}",
+                    "Consider targeting higher-level decision makers if score is low"
+                ]
+            }
+        except Exception as e:
+            logger.error(f"AI enhancement failed: {e}")
+            return {
+                'ai_score': 0.5,
+                'decision_authority': 0.5,
+                'company_relevance': 0.5,
+                'recommendations': ['AI analysis failed, using fallback scores']
+            }
+    
+    # =============================================================================
+    # LEGACY METHODS (Maintained for compatibility)
+    # =============================================================================
     
     async def process_lead(self, lead_data: LeadData) -> Tuple[LeadScore, AIResponse]:
         """Process a lead through the complete AI pipeline."""
         try:
             # Score the lead
-            lead_score = await self.lead_scoring.score_lead(lead_data)
+            lead_score = await self.score_lead(lead_data)
             
             # Generate personalized email
-            email_response = await self.personalization.personalize_email(lead_data)
+            email_response = await self.generate_cold_email(lead_data, {})
             
             logger.info(f"Lead processing completed: score={lead_score.score:.3f}, email_success={email_response.success}")
             return lead_score, email_response
@@ -771,7 +1363,7 @@ class AIEngine:
             raise
     
     async def get_ai_insights(self, user_id: str, date_range: Tuple[datetime, datetime]) -> Dict[str, Any]:
-        """Get AI-generated insights for a user's campaigns."""
+        """Get AI-generated insights for user's campaigns."""
         try:
             # Get analytics data
             analytics = await db_manager.get_user_analytics(user_id, date_range[0], date_range[1])

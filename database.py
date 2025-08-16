@@ -21,7 +21,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore as admin_firestore
 
 from config import config
-from auth import get_current_user
+# Removed circular import: from auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ class DatabaseManager:
     
     def __init__(self):
         self._initialize_firebase()
-        self.db = firestore.client()
+        self.db = admin_firestore.client()
         self.batch_size = config.get_database_config().batch_write_size
         self.collections = config.get_database_config().firestore_collections
         logger.info("Database manager initialized successfully")

@@ -27,8 +27,14 @@ from google.oauth2.credentials import Credentials
 import google.generativeai as genai
 
 from config import config
-from auth import auth_manager
+# Import auth_manager lazily to avoid circular imports
+# from auth import auth_manager
 from database import db_manager
+
+def get_auth_manager():
+    """Lazy import of auth_manager to avoid circular imports."""
+    from auth import auth_manager
+    return auth_manager
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +110,8 @@ class GoogleSheetsAPI:
     async def _get_authenticated_service(self):
         """Get authenticated Google Sheets service."""
         try:
-            tokens = auth_manager.get_oauth_tokens()
+            auth_mgr = get_auth_manager()
+            tokens = auth_mgr.get_oauth_tokens()
             if not tokens:
                 raise ValueError("No OAuth tokens available")
             
@@ -119,8 +126,8 @@ class GoogleSheetsAPI:
             
             # Refresh tokens if needed
             if credentials.expired:
-                await auth_manager.refresh_tokens()
-                tokens = auth_manager.get_oauth_tokens()
+                await auth_mgr.refresh_tokens()
+                tokens = auth_mgr.get_oauth_tokens()
                 credentials = Credentials(
                     token=tokens.access_token,
                     refresh_token=tokens.refresh_token,
@@ -195,7 +202,8 @@ class GoogleSheetsAPI:
             logger.error(f"Google Sheets API error: {e}")
             if e.resp.status == 401:
                 # Token expired, try to refresh
-                await auth_manager.refresh_tokens()
+                auth_mgr = get_auth_manager()
+                await auth_mgr.refresh_tokens()
                 return await self.extract_leads_from_sheet(spreadsheet_id, range_name)
             raise
         except Exception as e:
@@ -217,7 +225,8 @@ class GmailAPI:
     async def _get_authenticated_service(self):
         """Get authenticated Gmail service."""
         try:
-            tokens = auth_manager.get_oauth_tokens()
+            auth_mgr = get_auth_manager()
+            tokens = auth_mgr.get_oauth_tokens()
             if not tokens:
                 raise ValueError("No OAuth tokens available")
             
@@ -232,8 +241,8 @@ class GmailAPI:
             
             # Refresh tokens if needed
             if credentials.expired:
-                await auth_manager.refresh_tokens()
-                tokens = auth_manager.get_oauth_tokens()
+                await auth_mgr.refresh_tokens()
+                tokens = auth_mgr.get_oauth_tokens()
                 credentials = Credentials(
                     token=tokens.access_token,
                     refresh_token=tokens.refresh_token,
@@ -282,10 +291,11 @@ class GmailAPI:
             message['to'] = to_email
             message['subject'] = subject
             
+            auth_mgr = get_auth_manager()
             if from_name:
-                message['from'] = f"{from_name} <{auth_manager.get_current_user_email()}>"
+                message['from'] = f"{from_name} <{auth_mgr.get_current_user_email()}>"
             else:
-                message['from'] = auth_manager.get_current_user_email()
+                message['from'] = auth_mgr.get_current_user_email()
             
             if reply_to:
                 message['reply-to'] = reply_to
@@ -303,11 +313,12 @@ class GmailAPI:
             self.emails_sent_today += 1
             
             # Store email record in database
+            auth_mgr = get_auth_manager()
             email_data = {
                 'email_id': sent_message['id'],
                 'campaign_id': 'manual',  # Can be updated by calling function
                 'lead_id': 'manual',      # Can be updated by calling function
-                'user_id': auth_manager.get_current_user_id(),
+                'user_id': auth_mgr.get_current_user_id(),
                 'subject': subject,
                 'body': body,
                 'email_type': 'manual',
@@ -328,7 +339,8 @@ class GmailAPI:
             logger.error(f"Gmail API error: {e}")
             if e.resp.status == 401:
                 # Token expired, try to refresh
-                await auth_manager.refresh_tokens()
+                auth_mgr = get_auth_manager()
+                await auth_mgr.refresh_tokens()
                 return await self.send_email(to_email, subject, body, from_name, reply_to)
             return EmailResult(
                 success=False,

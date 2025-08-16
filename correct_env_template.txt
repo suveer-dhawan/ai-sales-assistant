@@ -1,0 +1,71 @@
+# AI Sales Assistant - CORRECTED Environment Variables
+# Copy this to .env and fill in your actual values
+# Make sure there are NO SPACES around the = sign
+
+# =============================================================================
+# REQUIRED: Google Gemini AI
+# =============================================================================
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# =============================================================================
+# REQUIRED: Google OAuth 2.0 (Gmail)
+# =============================================================================
+GMAIL_CLIENT_ID=your_gmail_client_id_here
+GMAIL_CLIENT_SECRET=your_gmail_client_secret_here
+GMAIL_REDIRECT_URI=http://localhost:8501/auth/callback
+
+# =============================================================================
+# REQUIRED: Google OAuth 2.0 (Sheets)
+# =============================================================================
+SHEETS_CLIENT_ID=your_sheets_client_id_here
+SHEETS_CLIENT_SECRET=your_sheets_client_secret_here
+SHEETS_REDIRECT_URI=http://localhost:8501/auth/callback
+
+# =============================================================================
+# REQUIRED: Calendly Integration
+# =============================================================================
+CALENDLY_API_KEY=your_calendly_api_key_here
+
+# =============================================================================
+# REQUIRED: Firebase Configuration
+# =============================================================================
+FIREBASE_PROJECT_ID=your_firebase_project_id_here
+FIREBASE_PRIVATE_KEY_ID=your_firebase_private_key_id_here
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYour actual private key content here\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=your_service_account_email@project.iam.gserviceaccount.com
+FIREBASE_CLIENT_ID=your_firebase_client_id_here
+
+# =============================================================================
+# OPTIONAL: Email Configuration
+# =============================================================================
+MAX_EMAILS_PER_DAY=100
+FOLLOW_UP_DELAY_HOURS=48
+MAX_FOLLOW_UPS=3
+BUSINESS_HOURS_START=9
+BUSINESS_HOURS_END=17
+TIMEZONE=UTC
+
+# =============================================================================
+# OPTIONAL: Automation Configuration
+# =============================================================================
+BATCH_SIZE=50
+PROCESSING_INTERVAL_MINUTES=15
+MAX_CONCURRENT_CAMPAIGNS=10
+LEAD_SCORE_THRESHOLD=0.7
+ENGAGEMENT_TIMEOUT_HOURS=168
+
+# =============================================================================
+# OPTIONAL: System Configuration
+# =============================================================================
+DEBUG=False
+ENVIRONMENT=production
+LOG_LEVEL=INFO
+
+# =============================================================================
+# IMPORTANT NOTES:
+# =============================================================================
+# 1. NO SPACES around the = sign
+# 2. NO quotes around values unless they contain special characters
+# 3. Make sure .env file is in the same directory as app.py
+# 4. Restart your terminal/IDE after creating/updating .env file
+# 5. The variable names MUST match exactly (case-sensitive)

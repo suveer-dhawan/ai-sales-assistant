@@ -14,6 +14,19 @@ from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    logger = logging.getLogger(__name__)
+    logger.info("Successfully loaded .env file")
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.warning("python-dotenv not installed. Make sure environment variables are set manually.")
+except Exception as e:
+    logger = logging.getLogger(__name__)
+    logger.error(f"Failed to load .env file: {e}")
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -29,27 +42,26 @@ logger = logging.getLogger(__name__)
 @dataclass
 class APIConfig:
     """API configuration settings for external services."""
+    # Required fields (no defaults)
     gemini_api_key: str
-    gemini_model: str = "gemini-pro"
-    gemini_max_tokens: int = 2048
-    gemini_temperature: float = 0.7
-    
     gmail_client_id: str
     gmail_client_secret: str
     gmail_redirect_uri: str
-    
     sheets_client_id: str
     sheets_client_secret: str
     sheets_redirect_uri: str
-    
     calendly_api_key: str
-    calendly_base_url: str = "https://api.calendly.com"
-    
     firebase_project_id: str
     firebase_private_key_id: str
     firebase_private_key: str
     firebase_client_email: str
     firebase_client_id: str
+    
+    # Optional fields (with defaults)
+    gemini_model: str = "gemini-pro"
+    gemini_max_tokens: int = 2048
+    gemini_temperature: float = 0.7
+    calendly_base_url: str = "https://api.calendly.com"
 
 @dataclass
 class EmailConfig:
@@ -130,6 +142,14 @@ class Config:
     def _load_environment_variables(self):
         """Load configuration from environment variables."""
         try:
+            # Debug: Print environment variables being loaded
+            logger.info("Loading environment variables...")
+            logger.debug(f"GEMINI_API_KEY: {'SET' if os.getenv('GEMINI_API_KEY') else 'NOT SET'}")
+            logger.debug(f"GMAIL_CLIENT_ID: {'SET' if os.getenv('GMAIL_CLIENT_ID') else 'NOT SET'}")
+            logger.debug(f"SHEETS_CLIENT_ID: {'SET' if os.getenv('SHEETS_CLIENT_ID') else 'NOT SET'}")
+            logger.debug(f"CALENDLY_API_KEY: {'SET' if os.getenv('CALENDLY_API_KEY') else 'NOT SET'}")
+            logger.debug(f"FIREBASE_PROJECT_ID: {'SET' if os.getenv('FIREBASE_PROJECT_ID') else 'NOT SET'}")
+            
             # API Configuration
             self.api = APIConfig(
                 gemini_api_key=os.getenv('GEMINI_API_KEY', ''),
@@ -235,6 +255,22 @@ class Config:
     def is_debug_enabled(self) -> bool:
         """Check if debug mode is enabled."""
         return self.debug
+    
+    def debug_environment_variables(self) -> Dict[str, str]:
+        """Debug method to check which environment variables are loaded."""
+        return {
+            'GEMINI_API_KEY': os.getenv('GEMINI_API_KEY', 'NOT SET'),
+            'GMAIL_CLIENT_ID': os.getenv('GMAIL_CLIENT_ID', 'NOT SET'),
+            'GMAIL_CLIENT_SECRET': os.getenv('GMAIL_CLIENT_SECRET', 'NOT SET'),
+            'SHEETS_CLIENT_ID': os.getenv('SHEETS_CLIENT_ID', 'NOT SET'),
+            'SHEETS_CLIENT_SECRET': os.getenv('SHEETS_CLIENT_SECRET', 'NOT SET'),
+            'CALENDLY_API_KEY': os.getenv('CALENDLY_API_KEY', 'NOT SET'),
+            'FIREBASE_PROJECT_ID': os.getenv('FIREBASE_PROJECT_ID', 'NOT SET'),
+            'FIREBASE_PRIVATE_KEY_ID': os.getenv('FIREBASE_PRIVATE_KEY_ID', 'NOT SET'),
+            'FIREBASE_CLIENT_EMAIL': os.getenv('FIREBASE_CLIENT_EMAIL', 'NOT SET'),
+            'FIREBASE_CLIENT_ID': os.getenv('FIREBASE_CLIENT_ID', 'NOT SET'),
+            'ENV_FILE_PATH': os.path.abspath('.env') if os.path.exists('.env') else 'NOT FOUND'
+        }
 
 # Global configuration instance
 config = Config()
