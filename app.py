@@ -138,6 +138,17 @@ def show_login_page():
             except Exception as e:
                 st.error(f"Failed to generate OAuth URL: {e}")
         
+        # Debug: Show OAuth URL details
+        if st.session_state.get('gmail_oauth_url'):
+            with st.expander("🔍 Debug: Gmail OAuth URL Details", expanded=False):
+                st.code(st.session_state.gmail_oauth_url, language="text")
+                st.info("""
+                **Expected Scopes:**
+                - Gmail send/read
+                - User profile/email
+                - **NO Google Sheets scopes**
+                """)
+        
         # Display Gmail OAuth when generated
         if st.session_state.get('show_gmail_auth', False):
             st.markdown("#### 📧 Gmail Authorization")
@@ -190,14 +201,35 @@ def show_login_page():
             if auth_response:
                 with st.spinner("Processing authorization..."):
                     try:
-                        # Determine service from URL
-                        if "sheets" in auth_response:
-                            success = asyncio.run(auth_manager.handle_oauth_callback('sheets', auth_response))
-                        elif "gmail" in auth_response:
-                            success = asyncio.run(auth_manager.handle_oauth_callback('gmail', auth_response))
+                        # Determine service from URL - be more explicit
+                        service_detected = None
+                        if "sheets" in auth_response.lower() and "gmail" not in auth_response.lower():
+                            service_detected = 'sheets'
+                        elif "gmail" in auth_response.lower() and "sheets" not in auth_response.lower():
+                            service_detected = 'gmail'
                         else:
-                            st.error("Unable to determine service from URL. Please check the URL contains 'sheets' or 'gmail'.")
-                            return
+                            # Let user choose manually
+                            st.error("""
+                            **Service Detection Ambiguous**
+                            
+                            The URL contains references to multiple services or is unclear.
+                            Please manually specify which service you're authenticating:
+                            """)
+                            
+                            service_choice = st.radio(
+                                "Which service are you connecting?",
+                                ["Gmail", "Google Sheets"],
+                                key="service_choice"
+                            )
+                            
+                            if service_choice == "Gmail":
+                                service_detected = 'gmail'
+                            else:
+                                service_detected = 'sheets'
+                        
+                        st.info(f"🔍 Detected service: **{service_detected.upper()}**")
+                        
+                        success = asyncio.run(auth_manager.handle_oauth_callback(service_detected, auth_response))
                         
                         if success:
                             st.success("🎉 Authorization completed successfully!")
@@ -233,10 +265,12 @@ def show_main_application():
     st.sidebar.markdown(f"**Welcome, {user_name}!**")
     
     # Navigation menu
-    page = st.sidebar.selectbox(
-        "Navigation",
+    st.sidebar.markdown("**Navigation**")
+    page = st.sidebar.radio(
+        "Select Page",
         ["📊 Dashboard", "👥 Lead Management", "📧 Campaigns", "🤖 AI Engine", "⚙️ Settings", "📈 Analytics"],
-        key="nav_selectbox"
+        key="nav_radio",
+        label_visibility="collapsed"
     )
     
     # Logout button
@@ -300,20 +334,48 @@ def show_dashboard():
     
     # Google Sheets Connection (if not already connected)
     st.markdown("### 🔗 Connect Google Sheets")
+    
+    # OAuth Flow Explanation
+    if not st.session_state.get('sheets_connected', False):
+        with st.expander("ℹ️ **How OAuth Works**", expanded=False):
+            st.markdown("""
+            **Why Two Separate Authentications?**
+            
+            Google requires separate OAuth applications for different services:
+            - **Gmail OAuth App**: Handles email sending and reading
+            - **Google Sheets OAuth App**: Handles spreadsheet access
+            
+            **The Process:**
+            1. ✅ **Gmail**: Authenticate to send emails
+            2. 🔐 **Google Sheets**: Authenticate to read spreadsheets
+            3. 🚀 **Ready**: Import leads and start campaigns
+            
+            This is a Google security requirement, not a limitation of our app.
+            """)
     if not st.session_state.get('sheets_connected', False):
         st.info("""
         **Connect Google Sheets to automatically import leads and start campaigns.**
         This allows the AI to pull lead data directly from your spreadsheets.
+        
+        **Note**: You need to authenticate with Google Sheets separately from Gmail.
         """)
         
-        if st.button("🔐 Connect Google Sheets", type="primary"):
-            try:
-                sheets_url = auth_manager.get_oauth_url('sheets')
-                st.session_state.sheets_oauth_url = sheets_url
-                st.session_state.show_sheets_auth_dashboard = True
-                st.rerun()
-            except Exception as e:
-                st.error(f"Failed to generate OAuth URL: {e}")
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            if st.button("🔐 Connect Google Sheets", type="primary", use_container_width=True):
+                try:
+                    sheets_url = auth_manager.get_oauth_url('sheets')
+                    st.session_state.sheets_oauth_url = sheets_url
+                    st.session_state.show_sheets_auth_dashboard = True
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to generate OAuth URL: {e}")
+        
+        with col2:
+            st.info("""
+            **🔑 Separate from Gmail**
+            This is a different Google OAuth app
+            """)
         
         if st.session_state.get('show_sheets_auth_dashboard', False):
             st.markdown("#### 📊 Google Sheets Authorization")
@@ -326,9 +388,71 @@ def show_dashboard():
                 st.rerun()
     else:
         st.success("✅ Google Sheets connected successfully!")
-        if st.button("🔄 Reconnect Google Sheets", type="secondary"):
-            st.session_state.sheets_connected = False
-            st.rerun()
+        
+        # Check if we have the new scopes
+        try:
+            tokens = auth_manager.get_oauth_tokens()
+            if tokens and "spreadsheets" in tokens.scopes:
+                st.success("✅ **Full Access**: Can read and extract leads from spreadsheets")
+            else:
+                st.warning("⚠️ **Limited Access**: Old tokens detected. Please reconnect for full functionality.")
+        except:
+            st.info("ℹ️ **Status**: Connected but scope verification pending")
+        
+        st.info("""
+        **Current Capabilities:**
+        - ✅ Read spreadsheet data
+        - ✅ Extract leads automatically
+        - ✅ Import to database
+        """)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("🔄 Reconnect Google Sheets", type="secondary"):
+                st.session_state.sheets_connected = False
+                st.rerun()
+        
+        with col2:
+            if st.button("🧪 Test Connection", type="secondary"):
+                try:
+                    with st.spinner("Testing Google Sheets connection..."):
+                        # Test with a simple API call
+                        test_result = asyncio.run(integration_manager.health_check())
+                        if test_result.get('google_sheets', False):
+                            st.success("✅ Google Sheets connection working!")
+                        else:
+                            st.error("❌ Google Sheets connection failed!")
+                except Exception as e:
+                    st.error(f"Connection test failed: {e}")
+            
+            # Show current OAuth token info
+            if st.button("🔍 Show Token Info", type="secondary"):
+                try:
+                    tokens = auth_manager.get_oauth_tokens()
+                    if tokens:
+                        st.info(f"**Current Token Scopes:**")
+                        for scope in tokens.scopes:
+                            st.text(f"• {scope}")
+                        
+                        if "spreadsheets" in tokens.scopes:
+                            st.success("✅ Has spreadsheets scope")
+                        else:
+                            st.error("❌ Missing spreadsheets scope - needs reconnection")
+                    else:
+                        st.warning("No OAuth tokens found")
+                except Exception as e:
+                    st.error(f"Failed to get token info: {e}")
+        
+        with col3:
+            if st.button("🗑️ Clear All OAuth", type="secondary", help="This will completely clear all OAuth tokens and force fresh authentication"):
+                # Clear all OAuth state using the new method
+                auth_manager.clear_oauth_tokens()
+                st.session_state.authenticated = False
+                st.session_state.sheets_connected = False
+                st.session_state.gmail_authenticated = False
+                st.session_state.sheets_authenticated = False
+                st.success("OAuth tokens cleared! Please re-authenticate.")
+                st.rerun()
     
     # Quick actions
     st.markdown("### ⚡ Quick Actions")
@@ -382,9 +506,35 @@ def show_dashboard():
             if spreadsheet_id:
                 with st.spinner("Extracting leads from Google Sheets..."):
                     try:
+                        # Check Google Sheets connection first
+                        if not st.session_state.get('sheets_connected', False):
+                            st.error("❌ Google Sheets not connected!")
+                            st.info("Please connect Google Sheets from the dashboard first.")
+                            return
+                        
                         # Extract spreadsheet ID if full URL was provided
                         if 'docs.google.com' in spreadsheet_id:
                             spreadsheet_id = spreadsheet_id.split('/')[5]
+                        
+                        # Test connection first
+                        st.info("Testing Google Sheets connection...")
+                        
+                        # Verify we have valid OAuth tokens
+                        try:
+                            tokens = auth_manager.get_oauth_tokens('sheets')
+                            if not tokens:
+                                st.error("❌ No Google Sheets OAuth tokens found. Please connect Google Sheets first.")
+                                return
+                            
+                            # Check if tokens have Sheets scopes
+                            if not any('spreadsheets' in scope for scope in tokens.scopes):
+                                st.error("❌ OAuth tokens missing Google Sheets permissions.")
+                                st.info("Please reconnect Google Sheets to get proper permissions.")
+                                return
+                                
+                        except Exception as e:
+                            st.error(f"❌ OAuth token verification failed: {e}")
+                            return
                         
                         leads = asyncio.run(integration_manager.sheets_api.extract_leads_from_sheet(
                             spreadsheet_id, range_name
@@ -448,6 +598,11 @@ def show_dashboard():
                             
                     except Exception as e:
                         st.error(f"Failed to extract leads: {e}")
+                        st.error("**Troubleshooting Tips:**")
+                        st.error("1. Make sure you've reconnected Google Sheets with new permissions")
+                        st.error("2. Check if the spreadsheet ID is correct")
+                        st.error("3. Verify the spreadsheet is shared with your account")
+                        st.error("4. Try reconnecting Google Sheets from the dashboard")
             else:
                 st.warning("Please enter a spreadsheet ID or URL.")
         
@@ -961,7 +1116,43 @@ def show_ai_engine():
                         
                         # Display email
                         st.markdown("#### 📧 Generated Email")
-                        st.text_area("Email Content", email_response.content, height=300)
+                        
+                        # Parse JSON response if needed
+                        try:
+                            if email_response.content and email_response.content.strip().startswith('{'):
+                                # Parse JSON response
+                                import json
+                                email_data = json.loads(email_response.content)
+                                
+                                # Display structured email
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.markdown("**Subject Line:**")
+                                    st.success(email_data.get('subject_line', 'No subject'))
+                                
+                                with col2:
+                                    st.markdown("**Personalization Score:**")
+                                    st.metric("Score", f"{email_data.get('personalization_score', 0):.2f}")
+                                
+                                st.markdown("**Email Body:**")
+                                email_body = email_data.get('email_body', email_response.content)
+                                st.text_area("Email Content", email_body, height=300)
+                                
+                                # Display additional info
+                                if email_data.get('pain_points_addressed'):
+                                    st.markdown("**Pain Points Addressed:**")
+                                    for point in email_data['pain_points_addressed']:
+                                        st.info(f"• {point}")
+                                
+                                if email_data.get('calendly_integration'):
+                                    st.info(f"📅 **Calendly Integration:** {email_data['calendly_integration']}")
+                                
+                            else:
+                                # Display raw content
+                                st.text_area("Email Content", email_response.content, height=300)
+                        except json.JSONDecodeError:
+                            # Fallback to raw content if JSON parsing fails
+                            st.text_area("Email Content", email_response.content, height=300)
                         
                         # Display recommendations
                         if lead_score.recommendations:
@@ -970,13 +1161,107 @@ def show_ai_engine():
                                 st.info(rec)
                         
                         # Send test email
-                        if st.button("📤 Send Test Email"):
+                        if st.form_submit_button("📤 Send Test Email"):
                             st.info("Test email feature coming soon!")
                     else:
                         st.error(f"AI generation failed: {email_response.error_message}")
                         
             except Exception as e:
                 st.error(f"Failed to generate email: {e}")
+    
+    # Display generated email outside the form
+    if st.session_state.get('lead_form_data'):
+        st.markdown("---")
+        st.markdown("### 📧 Generated Email Results")
+        
+        try:
+            # Create sample lead data
+            from integrations import LeadData
+            
+            form_data = st.session_state.lead_form_data
+            lead_data = LeadData(
+                name=form_data['name'],
+                email="test@example.com",
+                company=form_data['company'],
+                job_title=form_data['job_title'],
+                company_description=f"A {form_data['industry']} company",
+                pain_points=[p.strip() for p in form_data['pain_points'].split(',')] if form_data['pain_points'] else []
+            )
+            
+            with st.spinner("AI is generating your personalized email..."):
+                # Generate email
+                lead_score, email_response = asyncio.run(ai_engine.process_lead(lead_data))
+                
+                if email_response.success:
+                    st.success("✅ AI Email Generated Successfully!")
+                    
+                    # Display lead score
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Lead Score", f"{lead_score.score:.2f}")
+                    with col2:
+                        st.metric("Confidence", f"{lead_score.confidence:.2f}")
+                    
+                    # Display email
+                    st.markdown("#### 📧 Generated Email")
+                    
+                    # Parse JSON response if needed
+                    try:
+                        if email_response.content and email_response.content.strip().startswith('{'):
+                            # Parse JSON response
+                            import json
+                            email_data = json.loads(email_response.content)
+                            
+                            # Display structured email
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("**Subject Line:**")
+                                st.success(email_data.get('subject_line', 'No subject'))
+                            
+                            with col2:
+                                st.markdown("**Personalization Score:**")
+                                st.metric("Score", f"{email_data.get('personalization_score', 0):.2f}")
+                            
+                            st.markdown("**Email Body:**")
+                            email_body = email_data.get('email_body', email_response.content)
+                            st.text_area("Email Content", email_body, height=300, key="email_display")
+                            
+                            # Display additional info
+                            if email_data.get('pain_points_addressed'):
+                                st.markdown("**Pain Points Addressed:**")
+                                for point in email_data['pain_points_addressed']:
+                                    st.info(f"• {point}")
+                            
+                            if email_data.get('calendly_integration'):
+                                st.info(f"📅 **Calendly Integration:** {email_data['calendly_integration']}")
+                            
+                        else:
+                            # Display raw content
+                            st.text_area("Email Content", email_response.content, height=300, key="email_display")
+                    except json.JSONDecodeError:
+                        # Fallback to raw content if JSON parsing fails
+                        st.text_area("Email Content", email_response.content, height=300, key="email_display")
+                    
+                    # Display recommendations
+                    if lead_score.recommendations:
+                        st.markdown("#### 💡 AI Recommendations")
+                        for rec in lead_score.recommendations:
+                            st.info(rec)
+                    
+                    # Send test email
+                    if st.button("📤 Send Test Email", key="send_test_email"):
+                        st.info("Test email feature coming soon!")
+                        
+                    # Clear form data
+                    if st.button("🔄 Generate New Email", key="new_email"):
+                        del st.session_state.lead_form_data
+                        st.rerun()
+                        
+                else:
+                    st.error(f"AI generation failed: {email_response.error_message}")
+                    
+        except Exception as e:
+            st.error(f"Failed to generate email: {e}")
     
     # AI performance metrics
     st.markdown("### 📊 AI Performance")

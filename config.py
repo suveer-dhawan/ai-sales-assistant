@@ -58,7 +58,7 @@ class APIConfig:
     firebase_client_id: str
     
     # Optional fields (with defaults)
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-2.0-flash-exp" # Higher limits, better performance
     gemini_max_tokens: int = 2048
     gemini_temperature: float = 0.7
     calendly_base_url: str = "https://api.calendly.com"

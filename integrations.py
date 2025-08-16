@@ -71,6 +71,7 @@ class AIResponse:
     error_message: Optional[str] = None
     tokens_used: Optional[int] = None
     model: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 class RateLimiter:
     """Rate limiting utility for API calls."""
@@ -111,9 +112,9 @@ class GoogleSheetsAPI:
         """Get authenticated Google Sheets service."""
         try:
             auth_mgr = get_auth_manager()
-            tokens = auth_mgr.get_oauth_tokens()
+            tokens = auth_mgr.get_oauth_tokens('sheets')
             if not tokens:
-                raise ValueError("No OAuth tokens available")
+                raise ValueError("No Google Sheets OAuth tokens available")
             
             credentials = Credentials(
                 token=tokens.access_token,
@@ -226,9 +227,9 @@ class GmailAPI:
         """Get authenticated Gmail service."""
         try:
             auth_mgr = get_auth_manager()
-            tokens = auth_mgr.get_oauth_tokens()
+            tokens = auth_mgr.get_oauth_tokens('gmail')
             if not tokens:
-                raise ValueError("No OAuth tokens available")
+                raise ValueError("No Gmail OAuth tokens available")
             
             credentials = Credentials(
                 token=tokens.access_token,

@@ -25,6 +25,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 import pickle
 import os
+import hashlib
 
 from config import config
 from integrations import integration_manager, LeadData, AIResponse
@@ -318,12 +319,20 @@ class EmailPersonalizationEngine:
         self.gemini_api = integration_manager.gemini_api
         self.personalization_cache = {}
         self.cache_ttl = 3600  # 1 hour
+        self.request_cache = {}  # Cache for AI requests to avoid duplicates
+        self.request_cache_ttl = 1800  # 30 minutes
         logger.info("Email personalization engine initialized")
     
     async def personalize_email(self, lead_data: LeadData, email_type: str = "cold_email",
                               context: Dict[str, Any] = None) -> AIResponse:
         """Generate personalized email content."""
         try:
+            # Check cache first to avoid duplicate API calls
+            cache_key = self._get_cache_key(lead_data, email_type, context)
+            cached_response = self._get_cached_response(cache_key)
+            if cached_response:
+                return cached_response
+            
             # Get personalization data
             personalization_data = await self._get_personalization_data(lead_data)
             
@@ -343,6 +352,11 @@ class EmailPersonalizationEngine:
                 
                 # Store personalization data for future use
                 self._cache_personalization_data(lead_data.email, personalization_data)
+                
+                # Cache the AI response
+                self._cache_ai_response(cache_key, response)
+            else:
+                logger.warning(f"AI generation failed, will not cache failed response")
             
             return response
             
@@ -562,6 +576,60 @@ class EmailPersonalizationEngine:
                 
         except Exception as e:
             logger.error(f"Failed to cache personalization data: {e}")
+    
+    def _get_cache_key(self, lead_data: LeadData, email_type: str, context: Dict[str, Any] = None) -> str:
+        """Generate a unique cache key for AI requests."""
+        try:
+            # Create a hash of the request parameters
+            key_data = {
+                'email': lead_data.email,
+                'job_title': lead_data.job_title,
+                'company': lead_data.company,
+                'email_type': email_type,
+                'context_hash': hash(str(sorted(context.items()))) if context else 0
+            }
+            key_string = json.dumps(key_data, sort_keys=True)
+            return hashlib.md5(key_string.encode()).hexdigest()
+        except Exception as e:
+            logger.error(f"Failed to generate cache key: {e}")
+            return f"{lead_data.email}_{email_type}_{int(time.time())}"
+    
+    def _is_cached_request(self, cache_key: str) -> bool:
+        """Check if a request is cached and still valid."""
+        try:
+            if cache_key in self.request_cache:
+                cache_entry = self.request_cache[cache_key]
+                age = (datetime.utcnow() - cache_entry['timestamp']).total_seconds()
+                return age < self.request_cache_ttl
+            return False
+        except Exception as e:
+            logger.error(f"Failed to check cache: {e}")
+            return False
+    
+    def _cache_ai_response(self, cache_key: str, response: AIResponse):
+        """Cache AI response to avoid duplicate API calls."""
+        try:
+            self.request_cache[cache_key] = {
+                'response': response,
+                'timestamp': datetime.utcnow()
+            }
+            logger.debug(f"Cached AI response for key: {cache_key[:10]}...")
+        except Exception as e:
+            logger.error(f"Failed to cache AI response: {e}")
+    
+    def _get_cached_response(self, cache_key: str) -> Optional[AIResponse]:
+        """Get cached AI response if available."""
+        try:
+            if cache_key in self.request_cache:
+                cache_entry = self.request_cache[cache_key]
+                age = (datetime.utcnow() - cache_entry['timestamp']).total_seconds()
+                if age < self.request_cache_ttl:
+                    logger.info(f"Using cached AI response for key: {cache_key[:10]}...")
+                    return cache_entry['response']
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get cached response: {e}")
+            return None
 
 class ResponseAnalysisEngine:
     """Engine for analyzing email responses and determining next actions."""

@@ -36,8 +36,13 @@ class User:
     created_at: datetime
     last_login: datetime
     settings: Dict[str, Any]
+    updated_at: Optional[datetime] = None
     subscription_tier: str = "basic"
     is_active: bool = True
+    
+    def __post_init__(self):
+        if self.updated_at is None:
+            self.updated_at = datetime.utcnow()
 
 @dataclass
 class Lead:

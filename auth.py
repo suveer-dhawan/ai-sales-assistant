@@ -111,7 +111,7 @@ class AuthManager:
             
             auth_url, _ = flow.authorization_url(
                 access_type='offline',
-                include_granted_scopes='true',
+                include_granted_scopes='false',  # Changed from 'true' to 'false'
                 prompt='consent'
             )
             
@@ -182,7 +182,41 @@ class AuthManager:
             flow.fetch_token(code=authorization_code)
             credentials = flow.credentials
             
-            # Store tokens in session state
+            # Validate that we received the expected scopes for this service
+            received_scopes = set(credentials.scopes)
+            expected_scopes = set(scopes)
+            
+            logger.info(f"Expected scopes for {service}: {expected_scopes}")
+            logger.info(f"Received scopes: {received_scopes}")
+            
+            # Check if we have the minimum required scopes for this service
+            if service == 'gmail':
+                required_scopes = {
+                    'https://www.googleapis.com/auth/gmail.send',
+                    'https://www.googleapis.com/auth/gmail.readonly'
+                }
+                # For Gmail, we should NOT have Sheets scopes
+                forbidden_scopes = {
+                    'https://www.googleapis.com/auth/spreadsheets',
+                    'https://www.googleapis.com/auth/spreadsheets.readonly'
+                }
+                if forbidden_scopes.intersection(received_scopes):
+                    logger.warning(f"Gmail OAuth received unexpected Sheets scopes: {forbidden_scopes.intersection(received_scopes)}")
+                    logger.info("This might be due to cached Google permissions. Proceeding with Gmail authentication...")
+                    # Don't fail - just log the warning
+            elif service == 'sheets':
+                required_scopes = {
+                    'https://www.googleapis.com/auth/spreadsheets',
+                    'https://www.googleapis.com/auth/spreadsheets.readonly'
+                }
+            else:
+                required_scopes = set()
+            
+            if not required_scopes.issubset(received_scopes):
+                logger.error(f"Missing required scopes for {service}. Expected: {required_scopes}, Got: {received_scopes}")
+                raise ValueError(f"OAuth callback received wrong scopes for {service}. Please ensure you're using the correct authorization URL.")
+            
+            # Store tokens in session state for the specific service
             oauth_tokens = OAuthTokens(
                 access_token=credentials.token,
                 refresh_token=credentials.refresh_token,
@@ -193,7 +227,7 @@ class AuthManager:
                 expiry=credentials.expiry
             )
             
-            self.session_state.oauth_tokens = oauth_tokens
+            self.set_oauth_tokens(oauth_tokens, service)
             
             # Get user info and authenticate
             await self._authenticate_user(credentials)
@@ -204,6 +238,7 @@ class AuthManager:
                 logger.info("Gmail authentication completed successfully")
             elif service == 'sheets':
                 self.session_state.sheets_authenticated = True
+                self.session_state.sheets_connected = True
                 logger.info("Google Sheets authentication completed successfully")
             
             logger.info(f"OAuth callback handled successfully for {service}")
@@ -213,6 +248,15 @@ class AuthManager:
             logger.error(f"Failed to handle OAuth callback for {service}: {e}")
             logger.error(f"Authorization response: {authorization_response[:200]}...")
             logger.error(f"Service: {service}, Client ID: {client_id[:10]}...")
+            
+            # Provide more helpful error messages
+            if "wrong scopes" in str(e):
+                if service == 'gmail':
+                    logger.error("Gmail OAuth failed: You may have used the Google Sheets authorization URL instead of Gmail")
+                elif service == 'sheets':
+                    logger.error("Google Sheets OAuth failed: You may have used the Gmail authorization URL instead of Sheets")
+                logger.error("Please ensure you're using the correct authorization button for each service")
+            
             return False
     
     async def _authenticate_user(self, credentials: Credentials):
@@ -235,6 +279,8 @@ class AuthManager:
                     'name': user_info['name'],
                     'company': user_info.get('hd', 'Unknown'),  # Hosted domain
                     'role': 'user',
+                    'created_at': datetime.utcnow(),
+                    'last_login': datetime.utcnow(),
                     'settings': {},
                     'subscription_tier': 'basic'
                 }
@@ -310,11 +356,32 @@ class AuthManager:
             return self.session_state.user_name
         return None
     
-    def get_oauth_tokens(self) -> Optional[OAuthTokens]:
-        """Get current OAuth tokens."""
-        if self.is_authenticated() and self.session_state.oauth_tokens:
-            return self.session_state.oauth_tokens
-        return None
+    def get_oauth_tokens(self, service: str = None) -> Optional[OAuthTokens]:
+        """Get OAuth tokens for a specific service or all tokens."""
+        if service:
+            return self.session_state.get(f'{service}_oauth_tokens')
+        else:
+            # Return the most recently used tokens (for backward compatibility)
+            return (self.session_state.get('gmail_oauth_tokens') or 
+                   self.session_state.get('sheets_oauth_tokens'))
+    
+    def set_oauth_tokens(self, tokens: OAuthTokens, service: str):
+        """Set OAuth tokens for a specific service."""
+        self.session_state[f'{service}_oauth_tokens'] = tokens
+        logger.info(f"Stored OAuth tokens for {service}")
+    
+    def clear_oauth_tokens(self, service: str = None):
+        """Clear OAuth tokens for a specific service or all services."""
+        if service:
+            if f'{service}_oauth_tokens' in self.session_state:
+                del self.session_state[f'{service}_oauth_tokens']
+            logger.info(f"Cleared OAuth tokens for {service}")
+        else:
+            # Clear all service tokens
+            for key in list(self.session_state.keys()):
+                if key.endswith('_oauth_tokens'):
+                    del self.session_state[key]
+            logger.info("Cleared all OAuth tokens")
     
     async def refresh_tokens(self) -> bool:
         """Refresh OAuth tokens if they're expired."""
