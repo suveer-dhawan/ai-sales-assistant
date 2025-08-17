@@ -1,12 +1,12 @@
 # AI Sales Assistant - Complete SaaS Platform
 
-## 🚀 **Current Status: PRODUCTION READY**
+## 🚀 **Current Status: PRODUCTION READY WITH ENHANCED FEATURES**
 
-This is a **COMPLETE and PRODUCTION-READY** AI-powered sales automation SaaS platform that converts Google Sheet leads into personalized cold emails using AI intelligence. The platform is fully functional with comprehensive error handling, logging, and a modern Streamlit UI.
+This is a **COMPLETE and PRODUCTION-READY** AI-powered sales automation SaaS platform that converts Google Sheet leads into personalized cold emails using AI intelligence. The platform is fully functional with comprehensive error handling, logging, and a modern Streamlit UI. **Recently enhanced with beautiful lead management, campaign builder, and improved email functionality.**
 
 ## 🎯 **Core Value Proposition**
 
-**Automate cold email outreach, follow-ups, and meeting booking by converting Google Sheet leads into personalized emails crafted by AI.**
+**Automate cold email outreach, follow-ups, and meeting booking by converting Google Sheet leads into personalized emails crafted by AI. Now with enhanced lead management, beautiful campaign builder, and seamless email testing capabilities.**
 
 ## 🏗️ **Architecture Overview**
 
@@ -28,6 +28,10 @@ ai-sales-assistant/
 ├── automation.py       # ⚙️  Workflow Orchestration
 ├── database.py         # 💾  Data Persistence Layer
 ├── config.py           # ⚙️  Configuration Management
+├── models/             # 🤖  AI Model Files
+│   ├── lead_scoring_model.pkl
+│   ├── lead_scoring_scaler.pkl
+│   └── lead_scoring_vectorizer.pkl
 └── requirements.txt    # 📦  Dependency Management
 ```
 
@@ -44,15 +48,18 @@ ai-sales-assistant/
 - **Service Isolation**: No more token mixing between services
 - **Scope Management**: Gmail and Sheets use separate OAuth flows
 - **Token Refresh**: Automatic token renewal with proper error handling
+- **Manual OAuth Support**: URL pasting for OAuth callback handling
 
 ### **3. Database (`database.py`)**
 - **Firebase Admin SDK**: Proper initialization with service account
 - **Data Models**: User, Lead, Campaign, Email with proper relationships
 - **Index Management**: Handles Firestore index requirements gracefully
+- **CRUD Operations**: Full Create, Read, Update, Delete for leads
+- **Bulk Operations**: Efficient batch processing for multiple leads
 
 ### **4. Integrations (`integrations.py`)**
 - **Google Sheets API**: Lead extraction with proper authentication
-- **Gmail API**: Email sending with OAuth 2.0
+- **Gmail API**: Email sending with OAuth 2.0 and proper MIME handling
 - **Gemini AI**: Content generation with caching and rate limit handling
 - **Calendly**: Meeting scheduling integration
 
@@ -61,6 +68,8 @@ ai-sales-assistant/
 - **Email Personalization**: AI-generated content with JSON output
 - **Response Analysis**: Sentiment and intent classification
 - **Caching System**: Reduces redundant AI API calls
+- **User Name Integration**: Uses actual user names in email signatures
+- **Calendly Link Integration**: Automatically includes user's Calendly in emails
 
 ### **6. Automation (`automation.py`)**
 - **Campaign Orchestration**: Manages email sequences
@@ -68,10 +77,13 @@ ai-sales-assistant/
 - **Workflow Engine**: Coordinates between all services
 
 ### **7. Main App (`app.py`)**
-- **Streamlit UI**: Modern, responsive interface
+- **Streamlit UI**: Modern, responsive interface with beautiful styling
 - **Quick Actions**: Import leads, start campaigns, view reports
 - **OAuth Management**: Clear connection flows for each service
 - **Real-time Updates**: Live data display and interaction
+- **Enhanced Lead Management**: Beautiful card-based interface with delete functionality
+- **Campaign Builder**: Stunning visual design with metrics and templates
+- **AI Studio**: Improved email display with test email functionality
 
 ## 🚀 **Key Features (All Working)**
 
@@ -80,24 +92,40 @@ ai-sales-assistant/
 - **Google Sheets OAuth**: Connect Sheets for lead extraction
 - **Separate Token Storage**: No more authentication conflicts
 - **Session Management**: Persistent user sessions
+- **Manual OAuth Support**: URL pasting for callback handling
 
-### **✅ Lead Management**
+### **✅ Enhanced Lead Management**
 - **Google Sheets Import**: Extract leads from any spreadsheet
+- **Manual Lead Entry**: Beautiful form-based lead creation
 - **Lead Scoring**: AI-powered Hot/Warm/Cold classification
 - **Data Validation**: Ensures data quality and completeness
-- **CSV Export**: Download lead data for external use
+- **Beautiful Dashboard**: Card-based lead display with real-time stats
+- **Individual Lead Actions**: Update status, delete leads, view details
+- **Bulk Operations**: Delete all leads or update multiple statuses
+- **Search & Filtering**: Find leads by name, company, or status
 
 ### **✅ AI Email Generation**
 - **Personalized Content**: Company and role-specific emails
 - **Pain Point Targeting**: Addresses specific challenges
 - **Calendly Integration**: Automatic meeting scheduling links
 - **JSON Output Parsing**: Beautiful, formatted email display
+- **User Name Integration**: Real user names in email signatures
+- **Test Email Functionality**: Send test emails from user's account
 
 ### **✅ Campaign Management**
 - **Email Sequences**: Automated follow-up workflows
 - **Performance Tracking**: Open rates, response rates, conversions
 - **A/B Testing**: Subject line and content optimization
 - **Analytics Dashboard**: Comprehensive reporting
+- **Beautiful Campaign Builder**: Stunning visual interface with metrics
+- **Campaign Templates**: Pre-built templates for different use cases
+
+### **✅ Enhanced UI/UX**
+- **Modern Design**: Beautiful gradients, shadows, and visual elements
+- **Responsive Layout**: Works perfectly on all screen sizes
+- **Interactive Elements**: Hover effects, smooth transitions
+- **Professional Styling**: Consistent with modern SaaS applications
+- **Real-time Updates**: Live data refresh and state management
 
 ## 🔑 **Environment Setup**
 
@@ -144,6 +172,36 @@ cp .env.example .env
 streamlit run app.py
 ```
 
+## 🆕 **Recent Enhancements (Latest Release)**
+
+### **🎨 Beautiful Lead Management Interface**
+- **Card-based Design**: Each lead displayed in beautiful gradient cards
+- **Real-time Stats**: Live metrics showing total, new, contacted, and qualified leads
+- **Interactive Actions**: Update status, delete leads, view details
+- **Search & Filter**: Find leads by name, company, or status
+- **Bulk Operations**: Delete all leads or update multiple statuses
+
+### **🚀 Enhanced Campaign Builder**
+- **Visual Metrics**: Beautiful gradient cards showing campaign performance
+- **Template Gallery**: Pre-built templates for cold outreach, follow-ups, re-engagement
+- **Quick Actions**: Launch campaigns, view analytics, configure settings
+- **Best Practices**: Built-in tips for campaign optimization
+- **Performance Charts**: Placeholder for future analytics integration
+
+### **✉️ Improved AI Studio & Email Functionality**
+- **Better Email Display**: Clean subject lines, formatted content, AI insights
+- **Test Email Feature**: Send test emails from user's account to any recipient
+- **Calendly Integration**: User's Calendly link automatically included in emails
+- **User Name Integration**: Real user names instead of placeholders
+- **Enhanced Styling**: Black backgrounds, white text for better readability
+
+### **🔧 Technical Improvements**
+- **Safe Date Handling**: Fixed strftime errors with robust date processing
+- **Delete Operations**: Full CRUD functionality for leads
+- **Error Handling**: Comprehensive error management throughout
+- **State Management**: Improved session state handling
+- **Performance**: Better async operations and caching
+
 ## 🐛 **Known Issues & Solutions**
 
 ### **Issue 1: OAuth Token Confusion (RESOLVED)**
@@ -169,6 +227,21 @@ streamlit run app.py
 ### **Issue 5: Circular Imports (RESOLVED)**
 - **Problem**: Circular dependencies between modules
 - **Solution**: Implemented lazy imports and reorganized dependencies
+- **Status**: ✅ **FIXED**
+
+### **Issue 6: Lead Management Display (RESOLVED)**
+- **Problem**: `strftime` errors when displaying leads
+- **Solution**: Implemented safe date handling for both string and datetime objects
+- **Status**: ✅ **FIXED**
+
+### **Issue 7: Email MIME Handling (RESOLVED)**
+- **Problem**: `email.mime` import errors
+- **Solution**: Fixed import statements and MIME message creation
+- **Status**: ✅ **FIXED**
+
+### **Issue 8: Calendly Integration (RESOLVED)**
+- **Problem**: Calendly links not appearing in generated emails
+- **Solution**: Updated AI engine to use user's configured Calendly link
 - **Status**: ✅ **FIXED**
 
 ## 🔍 **Troubleshooting Guide**
@@ -220,6 +293,17 @@ except Exception as e:
     print(f"Database connection failed: {e}")
 ```
 
+### **Lead Management Issues**
+```python
+# Check lead data structure
+try:
+    leads = asyncio.run(db_manager.get_leads_by_user(user_id))
+    for lead in leads:
+        print(f"Lead: {lead.name}, Status: {lead.status}")
+except Exception as e:
+    print(f"Failed to retrieve leads: {e}")
+```
+
 ## 📊 **Performance & Monitoring**
 
 ### **Logging System**
@@ -258,12 +342,16 @@ except Exception as e:
 - **Advanced Analytics**: Machine learning insights and predictions
 - **Integration Marketplace**: Third-party CRM and marketing tools
 - **Mobile App**: React Native companion application
+- **Email Templates**: Customizable email templates and themes
+- **Advanced Campaign Analytics**: Detailed performance metrics and A/B testing
 
 ### **Technical Improvements**
 - **GraphQL API**: Modern API layer for frontend flexibility
 - **Event Sourcing**: Audit trail and data consistency
 - **Microservices**: Break down into smaller, focused services
 - **Kubernetes**: Container orchestration for scalability
+- **Real-time Updates**: WebSocket integration for live data
+- **Advanced Search**: Elasticsearch integration for lead discovery
 
 ## 👥 **Contributing**
 
@@ -305,8 +393,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **✅ ERROR HANDLING** - Comprehensive error management
 **✅ LOGGING** - Structured logging throughout
 **✅ AUTHENTICATION** - Separate OAuth for each service
-**✅ AI INTEGRATION** - Working email generation
-**✅ DATABASE** - Firebase integration working
-**✅ UI/UX** - Modern Streamlit interface
+**✅ AI INTEGRATION** - Working email generation with user names
+**✅ DATABASE** - Firebase integration with full CRUD operations
+**✅ UI/UX** - Modern Streamlit interface with beautiful styling
+**✅ LEAD MANAGEMENT** - Beautiful dashboard with delete functionality
+**✅ CAMPAIGN BUILDER** - Stunning visual interface with metrics
+**✅ EMAIL FUNCTIONALITY** - Test emails, Calendly integration, improved display
 
-**The platform is fully functional and ready for production use. All major issues have been resolved, and the architecture is stable and scalable.**
+**The platform is fully functional and ready for production use. All major issues have been resolved, and the architecture is stable and scalable. Recent enhancements include beautiful lead management, enhanced campaign builder, and improved email functionality.**
+
+## 🆕 **Latest Release Highlights**
+
+- **🎨 Beautiful Lead Management**: Card-based interface with real-time stats
+- **🚀 Enhanced Campaign Builder**: Visual metrics and template gallery
+- **✉️ Improved Email Studio**: Test emails, Calendly integration, better display
+- **🔧 Technical Improvements**: Safe date handling, delete operations, enhanced error handling
+- **📱 UI/UX Enhancements**: Modern gradients, responsive design, professional styling
+
+**Ready for demo and production use! 🎉**
