@@ -302,6 +302,43 @@ class DatabaseManager:
             logger.error(f"Failed to update lead {lead_id} status: {e}")
             raise
     
+    async def delete_lead(self, lead_id: str) -> bool:
+        """Delete a lead by ID."""
+        try:
+            doc_ref = self._get_collection('leads').document(lead_id)
+            doc_ref.delete()
+            
+            logger.info(f"Lead {lead_id} deleted successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to delete lead {lead_id}: {e}")
+            raise
+    
+    async def delete_all_leads_for_user(self, user_id: str) -> int:
+        """Delete all leads for a specific user."""
+        try:
+            leads_ref = self._get_collection('leads')
+            query = leads_ref.where('user_id', '==', user_id)
+            docs = query.stream()
+            
+            deleted_count = 0
+            batch = self.db.batch()
+            
+            for doc in docs:
+                batch.delete(doc.reference)
+                deleted_count += 1
+            
+            if deleted_count > 0:
+                batch.commit()
+            
+            logger.info(f"Deleted {deleted_count} leads for user {user_id}")
+            return deleted_count
+            
+        except Exception as e:
+            logger.error(f"Failed to delete leads for user {user_id}: {e}")
+            raise
+    
     async def bulk_create_leads(self, leads_data: List[Dict[str, Any]]) -> List[str]:
         """Create multiple leads in batch."""
         try:

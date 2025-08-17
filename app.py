@@ -1441,13 +1441,87 @@ def show_lead_management():
                     continue
             
             if leads_data:
-                leads_df = pd.DataFrame(leads_data)
-                
                 # Display with better styling
                 st.markdown(f"**📊 Showing {len(leads_data)} leads**")
-                st.dataframe(leads_df, use_container_width=True)
+                
+                # Create an interactive table with delete buttons
+                for i, lead_data in enumerate(leads_data):
+                    # Find the original lead object for deletion
+                    original_lead = next((lead for lead in leads if lead.lead_id == lead_data['ID']), None)
+                    
+                    if original_lead:
+                        # Create a card-like display for each lead
+                        col1, col2, col3 = st.columns([3, 1, 1])
+                        
+                        with col1:
+                            st.markdown(f"""
+                            <div style="
+                                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                                padding: 15px;
+                                border-radius: 10px;
+                                border-left: 4px solid #007bff;
+                                margin: 10px 0;
+                            ">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <h5 style="margin: 0 0 5px 0; color: #333;">{lead_data['Name']}</h5>
+                                        <p style="margin: 0 0 3px 0; color: #666; font-size: 0.9em;">
+                                            <strong>📧</strong> {lead_data['Email']}
+                                        </p>
+                                        <p style="margin: 0 0 3px 0; color: #666; font-size: 0.9em;">
+                                            <strong>🏢</strong> {lead_data['Company']} • {lead_data['Job Title']}
+                                        </p>
+                                        <p style="margin: 0 0 3px 0; color: #666; font-size: 0.9em;">
+                                            <strong>📊</strong> Score: {lead_data['Lead Score']} • Status: {lead_data['Status']}
+                                        </p>
+                                        <p style="margin: 0; color: #666; font-size: 0.8em;">
+                                            <strong>📅</strong> Created: {lead_data['Created']} • Last Contact: {lead_data['Last Contacted']}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col2:
+                            # Status update dropdown
+                            current_status = lead_data['Status']
+                            new_status = st.selectbox(
+                                "Status",
+                                ["new", "contacted", "responded", "qualified", "booked", "lost"],
+                                index=["new", "contacted", "responded", "qualified", "booked", "lost"].index(current_status),
+                                key=f"status_{lead_data['ID']}"
+                            )
+                            
+                            # Update status if changed
+                            if new_status != current_status:
+                                try:
+                                    # Update the lead status in database
+                                    asyncio.run(db_manager.update_lead_status(original_lead.lead_id, new_status))
+                                    st.success(f"✅ Status updated to {new_status}")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Failed to update status: {e}")
+                        
+                        with col3:
+                            # Delete button
+                            if st.button("🗑️ Delete", key=f"delete_{lead_data['ID']}", type="secondary", use_container_width=True):
+                                try:
+                                    # Confirm deletion
+                                    if st.session_state.get(f"confirm_delete_{lead_data['ID']}", False):
+                                        # Delete the lead
+                                        asyncio.run(db_manager.delete_lead(original_lead.lead_id))
+                                        st.success(f"✅ Lead {lead_data['Name']} deleted successfully!")
+                                        st.rerun()
+                                    else:
+                                        # Show confirmation
+                                        st.session_state[f"confirm_delete_{lead_data['ID']}"] = True
+                                        st.warning(f"⚠️ Click delete again to confirm deletion of {lead_data['Name']}")
+                                        st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Failed to delete lead: {e}")
                 
                 # Bulk actions
+                st.markdown("---")
                 st.markdown("#### 🚀 Bulk Actions")
                 col1, col2, col3 = st.columns(3)
                 
@@ -1460,8 +1534,21 @@ def show_lead_management():
                         st.info("🔄 Bulk status update coming soon!")
                 
                 with col3:
-                    if st.button("🗑️ Delete Selected", type="secondary", use_container_width=True):
-                        st.info("🗑️ Bulk delete feature coming soon!")
+                    if st.button("🗑️ Delete All", type="secondary", use_container_width=True):
+                        if st.session_state.get("confirm_delete_all", False):
+                            try:
+                                # Delete all leads for the user
+                                user_id = auth_manager.get_current_user_id()
+                                deleted_count = asyncio.run(db_manager.delete_all_leads_for_user(user_id))
+                                st.success(f"✅ Successfully deleted {deleted_count} leads!")
+                                st.session_state["confirm_delete_all"] = False
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Failed to delete all leads: {e}")
+                        else:
+                            st.session_state["confirm_delete_all"] = True
+                            st.warning("⚠️ Click 'Delete All' again to confirm deletion of ALL leads!")
+                            st.rerun()
             else:
                 st.info("ℹ️ No leads match the current filters.")
         else:
