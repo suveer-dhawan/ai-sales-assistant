@@ -321,7 +321,11 @@ class EmailPersonalizationEngine:
         self.cache_ttl = 3600  # 1 hour
         self.request_cache = {}  # Cache for AI requests to avoid duplicates
         self.request_cache_ttl = 1800  # 30 minutes
-        logger.info("Email personalization engine initialized")
+        self.rate_limit_delay = 1.0  # 1 second between API calls
+        self.last_api_call = 0
+        self.daily_api_calls = 0
+        self.max_daily_calls = 1000  # Conservative daily limit for Gemini 2.5 Flash-Lite
+        logger.info("Email personalization engine initialized with rate limiting")
     
     async def personalize_email(self, lead_data: LeadData, email_type: str = "cold_email",
                               context: Dict[str, Any] = None) -> AIResponse:
@@ -339,6 +343,9 @@ class EmailPersonalizationEngine:
             # Generate personalized prompt
             prompt = self._create_personalized_prompt(lead_data, personalization_data, email_type, context)
             
+            # Check rate limits before making API call
+            await self._check_rate_limits()
+            
             # Generate content using AI
             response = await self.gemini_api.generate_content(prompt, {
                 'lead_name': lead_data.name,
@@ -346,6 +353,9 @@ class EmailPersonalizationEngine:
                 'company': lead_data.company,
                 'personalization_score': personalization_data.personalization_score
             })
+            
+            # Increment API call counter
+            self.daily_api_calls += 1
             
             if response.success:
                 logger.info(f"Personalized {email_type} generated successfully")
@@ -624,12 +634,49 @@ class EmailPersonalizationEngine:
                 cache_entry = self.request_cache[cache_key]
                 age = (datetime.utcnow() - cache_entry['timestamp']).total_seconds()
                 if age < self.request_cache_ttl:
-                    logger.info(f"Using cached AI response for key: {cache_key[:10]}...")
+                    logger.info(f"Using cached AI response for key: {self.daily_api_calls}/{self.max_daily_calls} API calls used today")
                     return cache_entry['response']
             return None
         except Exception as e:
             logger.error(f"Failed to get cached response: {e}")
             return None
+    
+    async def _check_rate_limits(self):
+        """Check and enforce rate limits to optimize API usage."""
+        import time
+        import asyncio
+        
+        current_time = time.time()
+        
+        # Check daily limit
+        if self.daily_api_calls >= self.max_daily_calls:
+            raise Exception(f"Daily API call limit reached ({self.max_daily_calls}). Please try again tomorrow.")
+        
+        # Check rate limiting delay
+        time_since_last_call = current_time - self.last_api_call
+        if time_since_last_call < self.rate_limit_delay:
+            delay_needed = self.rate_limit_delay - time_since_last_call
+            logger.info(f"Rate limiting: waiting {delay_needed:.2f}s before next API call")
+            await asyncio.sleep(delay_needed)
+        
+        self.last_api_call = current_time
+        
+        # Log API usage
+        logger.info(f"API call made. Daily usage: {self.daily_api_calls}/{self.max_daily_calls}")
+    
+    def reset_daily_counter(self):
+        """Reset the daily API call counter (call this daily)."""
+        self.daily_api_calls = 0
+        logger.info("Daily API call counter reset")
+    
+    def get_api_usage_stats(self) -> Dict[str, Any]:
+        """Get current API usage statistics."""
+        return {
+            'daily_calls_used': self.daily_api_calls,
+            'daily_calls_limit': self.max_daily_calls,
+            'calls_remaining': self.max_daily_calls - self.daily_api_calls,
+            'cache_hit_rate': len(self.request_cache) / max(1, self.daily_api_calls) if self.daily_api_calls > 0 else 0
+        }
 
 class ResponseAnalysisEngine:
     """Engine for analyzing email responses and determining next actions."""
@@ -1412,8 +1459,22 @@ class AIEngine:
             # Score the lead
             lead_score = await self.score_lead(lead_data)
             
-            # Generate personalized email
-            email_response = await self.generate_cold_email(lead_data, {})
+            # Get user's Calendly link from database
+            user_calendly = None
+            try:
+                # This would get the user's Calendly link from their profile
+                # For now, we'll use a placeholder
+                user_calendly = "https://calendly.com/yourusername"
+            except:
+                pass
+            
+            # Generate personalized email with Calendly integration
+            user_settings = {
+                'calendly_link': user_calendly,
+                'include_calendly': user_calendly is not None
+            }
+            
+            email_response = await self.generate_cold_email(lead_data, user_settings)
             
             logger.info(f"Lead processing completed: score={lead_score.score:.3f}, email_success={email_response.success}")
             return lead_score, email_response

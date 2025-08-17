@@ -28,55 +28,286 @@ from automation import automation_manager
 
 # Page configuration
 st.set_page_config(
-    page_title="AI Sales Assistant",
+    page_title="JOE - AI Sales Assistant",
     page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for professional styling
+# Custom CSS for dark theme and modern styling
 st.markdown("""
 <style>
+    /* Dark theme colors */
+    :root {
+        --bg-primary: #2A2F41;
+        --bg-secondary: #353B50;
+        --bg-tertiary: #1B2631;
+        --bg-card: #353B50;
+        --text-primary: #FFFEFF;
+        --text-secondary: #BDC3C7;
+        --accent-primary: #3E497B;
+        --accent-secondary: #353B50;
+        --success: #27AE60;
+        --warning: #F39C12;
+        --error: #E74C3C;
+        --sidebar-width: 240px;
+    }
+    
+    /* Global styles */
+    .main {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+    }
+    
+    .stApp {
+        background-color: var(--bg-primary);
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background-color: var(--bg-secondary);
+        width: var(--sidebar-width) !important;
+        min-width: var(--sidebar-width) !important;
+    }
+    
+    .css-1d391kg .css-1lcbmhc {
+        background-color: var(--bg-secondary);
+        width: var(--sidebar-width) !important;
+        min-width: var(--sidebar-width) !important;
+    }
+    
+    /* Custom sidebar */
+    .sidebar-brand {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        text-align: center;
+        padding: 1rem 0;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid var(--accent-primary);
+    }
+    
+    .sidebar-section {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 1.5rem 0 0.5rem 0;
+        padding-left: 1rem;
+    }
+    
+    .sidebar-nav-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        margin: 0.25rem 0;
+        border-radius: 0.5rem;
+        color: var(--text-primary);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .sidebar-nav-item:hover {
+        background-color: var(--bg-tertiary);
+        transform: translateX(4px);
+    }
+    
+    .sidebar-nav-item.active {
+        background-color: var(--accent-primary);
+        color: var(--text-primary);
+    }
+    
+    /* Main content styling */
     .main-header {
         font-size: 2.5rem;
         font-weight: 700;
-        color: #1f77b4;
-        text-align: center;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+    
+    .welcome-text {
+        font-size: 1.5rem;
+        color: var(--text-secondary);
         margin-bottom: 2rem;
     }
+    
+    /* Metric cards */
     .metric-card {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #1f77b4;
+        background-color: var(--bg-card);
+        padding: 1.5rem;
+        border-radius: 1rem;
+        border: 1px solid var(--bg-tertiary);
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
         margin: 0.5rem 0;
     }
+    
+    .metric-label {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+    
+    /* Content cards */
+    .content-card {
+        background-color: var(--bg-card);
+        padding: 2rem;
+        border-radius: 1rem;
+        border: 1px solid var(--bg-tertiary);
+        margin: 1rem 0;
+        min-height: 300px;
+    }
+    
+    .content-card h3 {
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        font-size: 1.3rem;
+    }
+    
+    /* Form styling */
+    .stButton > button {
+        background-color: var(--accent-primary);
+        color: var(--text-primary);
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    
+    .stButton > button:hover {
+        background-color: var(--accent-secondary);
+        transform: translateY(-2px);
+    }
+    
+    /* Input styling */
+    .stTextInput > div > div > input {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--bg-card);
+        border-radius: 0.5rem;
+    }
+    
+    .stSelectbox > div > div > div {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--bg-card);
+        border-radius: 0.5rem;
+    }
+    
+    /* Success/Error messages */
     .success-message {
-        background-color: #d4edda;
-        color: #155724;
+        background-color: rgba(39, 174, 96, 0.1);
+        color: var(--success);
         padding: 1rem;
         border-radius: 0.5rem;
-        border: 1px solid #c3e6cb;
+        border: 1px solid var(--success);
     }
+    
     .error-message {
-        background-color: #f8d7da;
-        color: #721c24;
+        background-color: rgba(231, 76, 60, 0.1);
+        color: var(--error);
         padding: 1rem;
         border-radius: 0.5rem;
-        border: 1px solid #f5c6cb;
+        border: 1px solid var(--error);
     }
+    
     .info-message {
-        background-color: #d1ecf1;
-        color: #0c5460;
+        background-color: rgba(52, 152, 219, 0.1);
+        color: var(--accent-primary);
         padding: 1rem;
         border-radius: 0.5rem;
-        border: 1px solid #bee5eb;
+        border: 1px solid var(--accent-primary);
+    }
+    
+    /* AI Studio specific styling */
+    .ai-studio-section {
+        background-color: var(--bg-secondary);
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        margin: 1rem 0;
+        border: 1px solid var(--bg-card);
+    }
+    
+    .email-preview-box {
+        background-color: var(--bg-tertiary);
+        border: 2px solid var(--accent-primary);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    
+    .metric-card {
+        background-color: var(--bg-secondary);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid var(--bg-card);
+        text-align: center;
+    }
+    
+    .pain-point-item {
+        background-color: #28A745;
+        color: white;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        margin: 0.5rem 0;
+        border-left: 4px solid #1E7E34;
+        font-weight: 500;
+    }
+    
+    .calendly-note {
+        background-color: #FFC107;
+        color: #212529;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 0.75rem 0;
+        border-left: 4px solid #E0A800;
+        font-weight: 500;
+    }
+    
+    /* Hide Streamlit default elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--accent-primary);
     }
 </style>
 """, unsafe_allow_html=True)
 
 def main():
     """Main application entry point."""
+    
+
     
     # Initialize session state
     if 'sheets_oauth_url' not in st.session_state:
@@ -97,6 +328,21 @@ def main():
         st.session_state.show_start_campaign = False
     if 'show_reports' not in st.session_state:
         st.session_state.show_reports = False
+    if 'last_reset_date' not in st.session_state:
+        st.session_state.last_reset_date = datetime.now().date()
+    
+    # Reset daily API counter if it's a new day
+    current_date = datetime.now().date()
+    if current_date != st.session_state.last_reset_date:
+        # New day, reset API counters
+        try:
+            from ai_engine import EmailPersonalizationEngine
+            ai_engine = EmailPersonalizationEngine()
+            ai_engine.reset_daily_counter()
+            st.session_state.last_reset_date = current_date
+            logger.info("Daily API counter reset")
+        except Exception as e:
+            logger.warning(f"Failed to reset daily counter: {e}")
     
     # Check authentication
     if not auth_manager.is_authenticated():
@@ -108,7 +354,7 @@ def main():
 
 def show_login_page():
     """Display the login/authentication page."""
-    st.markdown('<h1 class="main-header">🚀 AI Sales Assistant</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🚀 JOE - AI Sales Assistant</h1>', unsafe_allow_html=True)
     st.markdown("""
     <div style="text-align: center; margin-bottom: 2rem;">
         <h2>Never write another cold email. Never miss a follow-up.</h2>
@@ -138,26 +384,59 @@ def show_login_page():
             except Exception as e:
                 st.error(f"Failed to generate OAuth URL: {e}")
         
-        # Debug: Show OAuth URL details
-        if st.session_state.get('gmail_oauth_url'):
-            with st.expander("🔍 Debug: Gmail OAuth URL Details", expanded=False):
-                st.code(st.session_state.gmail_oauth_url, language="text")
-                st.info("""
-                **Expected Scopes:**
-                - Gmail send/read
-                - User profile/email
-                - **NO Google Sheets scopes**
-                """)
-        
         # Display Gmail OAuth when generated
         if st.session_state.get('show_gmail_auth', False):
             st.markdown("#### 📧 Gmail Authorization")
             st.markdown("**Click the link below to authorize Gmail access:**")
             st.markdown(f"[🔐 Authorize Gmail]({st.session_state.gmail_oauth_url})")
             st.info("After authorization, you'll be redirected back to the application.")
+            
+            # Manual completion button (working state)
             if st.button("✅ I've Completed Gmail Authorization", key="gmail_done"):
                 st.session_state.show_gmail_auth = False
                 st.rerun()
+            
+            # Alternative: Manual URL pasting for OAuth callback
+            st.markdown("---")
+            st.markdown("**🔧 Alternative: If automatic redirect doesn't work, paste the callback URL here:**")
+            
+            callback_url = st.text_input(
+                "Paste the callback URL or just the authorization code:",
+                placeholder="https://localhost:8501/auth/callback?code=... OR just paste the code: 4/0AVMBsJhG...",
+                key="gmail_callback_input"
+            )
+            
+            if st.button("🔐 Process Callback URL", key="gmail_process_callback"):
+                if callback_url:
+                    try:
+                        # Check if it's a full URL or just the authorization code
+                        if "code=" in callback_url:
+                            # It's a full URL, extract the code
+                            import re
+                            code_match = re.search(r'code=([^&]+)', callback_url)
+                            if code_match:
+                                authorization_code = code_match.group(1)
+                            else:
+                                st.error("❌ No authorization code found in the URL. Please check the URL format.")
+                                return
+                        else:
+                            # It's just the authorization code
+                            authorization_code = callback_url.strip()
+                        
+                        # Process the OAuth callback
+                        import asyncio
+                        success = asyncio.run(auth_manager.handle_oauth_callback('gmail', authorization_code))
+                        
+                        if success:
+                            st.success("✅ Gmail connected successfully! You can now access the dashboard.")
+                            st.session_state.show_gmail_auth = False
+                            st.rerun()
+                        else:
+                            st.error("❌ Failed to connect Gmail. Please check the URL and try again.")
+                    except Exception as e:
+                        st.error(f"❌ Error processing callback: {e}")
+                else:
+                    st.error("❌ Please paste the callback URL or authorization code.")
         
         # Google Sheets OAuth (Secondary - Can be done later)
         st.markdown("---")
@@ -185,128 +464,174 @@ def show_login_page():
             if st.button("✅ I've Completed Sheets Authorization", key="sheets_done"):
                 st.session_state.show_sheets_auth = False
                 st.rerun()
-        
-        # Manual OAuth callback handling (for troubleshooting)
-        st.markdown("---")
-        st.markdown("### 🔄 Troubleshooting: Manual Authorization")
-        st.info("""
-        **If the automatic redirect isn't working, you can manually complete the authorization:**
-        1. Copy the full URL from your browser after authorization
-        2. Paste it below and click "Complete Setup"
-        3. This will manually process your authorization
-        """)
-        
-        auth_response = st.text_input("Paste the full authorization URL from your browser:")
-        if st.button("Complete Setup", type="secondary"):
-            if auth_response:
-                with st.spinner("Processing authorization..."):
+            
+            # Alternative: Manual URL pasting for OAuth callback
+            st.markdown("---")
+            st.markdown("**🔧 Alternative: If automatic redirect doesn't work, paste the callback URL here:**")
+            
+            sheets_callback_url = st.text_input(
+                "Paste the callback URL or just the authorization code:",
+                placeholder="https://localhost:8501/auth/callback?code=... OR just paste the code: 4/0AVMBsJhG...",
+                key="sheets_callback_input"
+            )
+            
+            if st.button("🔐 Process Callback URL", key="sheets_process_callback"):
+                if sheets_callback_url:
                     try:
-                        # Determine service from URL - be more explicit
-                        service_detected = None
-                        if "sheets" in auth_response.lower() and "gmail" not in auth_response.lower():
-                            service_detected = 'sheets'
-                        elif "gmail" in auth_response.lower() and "sheets" not in auth_response.lower():
-                            service_detected = 'gmail'
-                        else:
-                            # Let user choose manually
-                            st.error("""
-                            **Service Detection Ambiguous**
-                            
-                            The URL contains references to multiple services or is unclear.
-                            Please manually specify which service you're authenticating:
-                            """)
-                            
-                            service_choice = st.radio(
-                                "Which service are you connecting?",
-                                ["Gmail", "Google Sheets"],
-                                key="service_choice"
-                            )
-                            
-                            if service_choice == "Gmail":
-                                service_detected = 'gmail'
+                        # Check if it's a full URL or just the authorization code
+                        if "code=" in sheets_callback_url:
+                            # It's a full URL, extract the code
+                            import re
+                            code_match = re.search(r'code=([^&]+)', sheets_callback_url)
+                            if code_match:
+                                authorization_code = code_match.group(1)
                             else:
-                                service_detected = 'sheets'
+                                st.error("❌ No authorization code found in the URL. Please check the URL format.")
+                                return
+                        else:
+                            # It's just the authorization code
+                            authorization_code = sheets_callback_url.strip()
                         
-                        st.info(f"🔍 Detected service: **{service_detected.upper()}**")
-                        
-                        success = asyncio.run(auth_manager.handle_oauth_callback(service_detected, auth_response))
+                        # Process the OAuth callback
+                        import asyncio
+                        success = asyncio.run(auth_manager.handle_oauth_callback('sheets', authorization_code))
                         
                         if success:
-                            st.success("🎉 Authorization completed successfully!")
-                            st.balloons()
-                            
-                            # Check which service was authenticated
-                            if "sheets" in auth_response:
-                                st.session_state.sheets_connected = True
-                                st.info("Google Sheets connected! You can now import leads.")
-                            elif "gmail" in auth_response:
-                                st.session_state.authenticated = True
-                                st.info("Gmail connected! Redirecting to dashboard...")
-                            
+                            st.success("✅ Google Sheets connected successfully!")
+                            st.session_state.show_sheets_auth = False
                             st.rerun()
                         else:
-                            st.error("❌ Authorization failed. Please try again or check the URL.")
+                            st.error("❌ Failed to connect Google Sheets. Please check the URL and try again.")
                     except Exception as e:
-                        st.error(f"Authorization error: {e}")
-                        st.error("Please make sure you copied the complete URL from your browser.")
-            else:
-                st.warning("Please paste the authorization response URL.")
+                        st.error(f"❌ Error processing callback: {e}")
+                else:
+                    st.error("❌ Please paste the callback URL or authorization code.")
+        
+        # Note: OAuth will automatically redirect after successful authorization
+        st.info("""
+        **💡 Tip:** After clicking the authorization link, you'll be automatically redirected back to the app.
+        If you encounter any issues, you can always connect Google Sheets later from the dashboard.
+        """)
 
 def show_main_application():
     """Display the main application interface."""
     
-    # Sidebar navigation
-    st.sidebar.title("🎯 AI Sales Assistant")
+    # Custom sidebar with JOE branding
+    with st.sidebar:
+        # JOE Brand
+        st.markdown('<div class="sidebar-brand">JOE</div>', unsafe_allow_html=True)
+        
+        # Discover section
+        st.markdown('<div class="sidebar-section">Discover</div>', unsafe_allow_html=True)
+        
+        # Navigation menu with icons
+        nav_items = [
+            ("🏠", "Dashboard", "dashboard"),
+            ("🔍", "Lead Management", "lead_management"),
+            ("🧠", "AI Studio", "ai_studio"),
+            ("📊", "Campaign Builder", "campaign_builder"),
+            ("📈", "Analytics", "analytics")
+        ]
+        
+        # Get current page from session state
+        current_page = st.session_state.get('current_page', 'dashboard')
+        
+        for icon, label, page_id in nav_items:
+            is_active = current_page == page_id
+            
+            if st.button(f"{icon} {label}", key=f"nav_{page_id}", use_container_width=True):
+                st.session_state.current_page = page_id
+                st.rerun()
+            
+            # Apply active styling
+            if is_active:
+                st.markdown(f"""
+                <style>
+                    [data-testid="stButton"] button[kind="secondary"]:nth-of-type({nav_items.index((icon, label, page_id)) + 1}) {{
+                        background-color: var(--accent-primary) !important;
+                        color: var(--text-primary) !important;
+                    }}
+                </style>
+                """, unsafe_allow_html=True)
+        
+        # Settings button at bottom
+        st.markdown("---")
+        if st.button("⚙️ Settings", use_container_width=True):
+            st.session_state.current_page = 'settings'
+            st.rerun()
+        
+        # Logout button
+        if st.button("🚪 Logout", use_container_width=True):
+            auth_manager.logout()
+            st.rerun()
     
-    # Get user info for welcome message
-    user_email = auth_manager.get_current_user_email()
-    user_name = auth_manager.get_current_user_name() or user_email.split('@')[0] if user_email else "User"
+    # Main content area
+    # Top bar with welcome message and settings
+    col1, col2, col3 = st.columns([3, 1, 1])
     
-    st.sidebar.markdown(f"**Welcome, {user_name}!**")
+    with col1:
+        user_name = auth_manager.get_current_user_name() or "User"
+        st.markdown(f'<div class="welcome-text">Welcome {user_name}</div>', unsafe_allow_html=True)
     
-    # Navigation menu
-    st.sidebar.markdown("**Navigation**")
-    page = st.sidebar.radio(
-        "Select Page",
-        ["📊 Dashboard", "👥 Lead Management", "📧 Campaigns", "🤖 AI Engine", "⚙️ Settings", "📈 Analytics"],
-        key="nav_radio",
-        label_visibility="collapsed"
-    )
-    
-    # Logout button
-    if st.sidebar.button("🚪 Logout"):
-        auth_manager.logout()
-        st.rerun()
+    with col3:
+        if st.button("Settings", key="top_settings"):
+            st.session_state.current_page = 'settings'
+            st.rerun()
     
     # Display selected page
-    if page == "📊 Dashboard":
+    current_page = st.session_state.get('current_page', 'dashboard')
+    
+    if current_page == 'dashboard':
         show_dashboard()
-    elif page == "👥 Lead Management":
+    elif current_page == 'lead_management':
         show_lead_management()
-    elif page == "📧 Campaigns":
-        show_campaigns()
-    elif page == "🤖 AI Engine":
-        show_ai_engine()
-    elif page == "⚙️ Settings":
-        show_settings()
-    elif page == "📈 Analytics":
+    elif current_page == 'ai_studio':
+        show_ai_studio()
+    elif current_page == 'campaign_builder':
+        show_campaign_builder()
+    elif current_page == 'analytics':
         show_analytics()
+    elif current_page == 'settings':
+        show_settings()
 
 def show_dashboard():
     """Display the main dashboard."""
-    st.markdown('<h1 class="main-header">📊 Dashboard</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">Dashboard</h1>', unsafe_allow_html=True)
     
-    # Quick stats
+    # Quick stats - 4 metric cards
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total Leads", "1,247", "+12%")
+        st.markdown("""
+        <div class="metric-card">
+            <div class="metric-label">Total Leads</div>
+            <div class="metric-value">1,247</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col2:
-        st.metric("Active Campaigns", "3", "2 running")
+        st.markdown("""
+        <div class="metric-card">
+            <div class="metric-label">Active Campaigns</div>
+            <div class="metric-value">3</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col3:
-        st.metric("Emails Sent", "892", "+8%")
+        st.markdown("""
+        <div class="metric-card">
+            <div class="metric-label">Emails Sent</div>
+            <div class="metric-value">892</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col4:
-        st.metric("Meetings Booked", "23", "+15%")
+        st.markdown("""
+        <div class="metric-card">
+            <div class="metric-label">Meetings Booked</div>
+            <div class="metric-value">23</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     # System health check
     st.markdown("### 🔍 System Health")
@@ -335,23 +660,6 @@ def show_dashboard():
     # Google Sheets Connection (if not already connected)
     st.markdown("### 🔗 Connect Google Sheets")
     
-    # OAuth Flow Explanation
-    if not st.session_state.get('sheets_connected', False):
-        with st.expander("ℹ️ **How OAuth Works**", expanded=False):
-            st.markdown("""
-            **Why Two Separate Authentications?**
-            
-            Google requires separate OAuth applications for different services:
-            - **Gmail OAuth App**: Handles email sending and reading
-            - **Google Sheets OAuth App**: Handles spreadsheet access
-            
-            **The Process:**
-            1. ✅ **Gmail**: Authenticate to send emails
-            2. 🔐 **Google Sheets**: Authenticate to read spreadsheets
-            3. 🚀 **Ready**: Import leads and start campaigns
-            
-            This is a Google security requirement, not a limitation of our app.
-            """)
     if not st.session_state.get('sheets_connected', False):
         st.info("""
         **Connect Google Sheets to automatically import leads and start campaigns.**
@@ -424,24 +732,6 @@ def show_dashboard():
                             st.error("❌ Google Sheets connection failed!")
                 except Exception as e:
                     st.error(f"Connection test failed: {e}")
-            
-            # Show current OAuth token info
-            if st.button("🔍 Show Token Info", type="secondary"):
-                try:
-                    tokens = auth_manager.get_oauth_tokens()
-                    if tokens:
-                        st.info(f"**Current Token Scopes:**")
-                        for scope in tokens.scopes:
-                            st.text(f"• {scope}")
-                        
-                        if "spreadsheets" in tokens.scopes:
-                            st.success("✅ Has spreadsheets scope")
-                        else:
-                            st.error("❌ Missing spreadsheets scope - needs reconnection")
-                    else:
-                        st.warning("No OAuth tokens found")
-                except Exception as e:
-                    st.error(f"Failed to get token info: {e}")
         
         with col3:
             if st.button("🗑️ Clear All OAuth", type="secondary", help="This will completely clear all OAuth tokens and force fresh authentication"):
@@ -479,6 +769,27 @@ def show_dashboard():
         if st.button("📊 View Reports", type="primary", use_container_width=True):
             st.session_state.show_reports = True
             st.rerun()
+    
+    # Cost Optimization Tips
+    st.markdown("### 💰 Cost Optimization Tips")
+    
+    with st.expander("🔍 **API Usage Optimization**", expanded=False):
+        st.markdown("""
+        **Gemini 2.5 Flash-Lite Model Benefits:**
+        - ✅ **Higher Daily Limits**: More calls per day than previous models
+        - ✅ **Cost Effective**: Optimized for cost-conscious applications
+        - ✅ **Fast Response**: Quick generation for better user experience
+        
+        **Smart Caching System:**
+        - 🔄 **Duplicate Prevention**: Avoids generating the same email twice
+        - ⏱️ **Rate Limiting**: 1-second delay between API calls to prevent abuse
+        - 📊 **Usage Monitoring**: Real-time tracking of daily API consumption
+        
+        **Best Practices:**
+        - Use the **Test AI Generation** feature sparingly during demos
+        - **Cache results** for similar lead types to reduce API calls
+        - Monitor the **API Usage** section in AI Studio for current consumption
+        """)
     
     # Import Leads Modal
     if st.session_state.get('show_import_leads', False):
@@ -778,7 +1089,7 @@ def show_dashboard():
 
 def show_lead_management():
     """Display lead management interface."""
-    st.markdown('<h1 class="main-header">👥 Lead Management</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">Lead Management</h1>', unsafe_allow_html=True)
     
     # Lead import section
     st.markdown("### 📥 Import Leads")
@@ -956,6 +1267,422 @@ def show_lead_management():
     except Exception as e:
         st.error(f"Failed to load leads: {e}")
 
+def parse_email_response(email_response):
+    """
+    Parse and format AI-generated email response.
+    
+    Args:
+        email_response: The raw response from the AI engine
+        
+    Returns:
+        dict: Parsed email data with clean formatting
+    """
+    try:
+        if not email_response or not email_response.content:
+            return None
+            
+        content = email_response.content.strip()
+        
+        # Handle different response formats
+        if content.startswith('{') or content.startswith('```json'):
+            # JSON response - clean and parse
+            if content.startswith('```json'):
+                content = content.replace('```json', '').replace('```', '').strip()
+            elif content.startswith('```'):
+                content = content.replace('```', '').strip()
+            
+            # Parse JSON
+            import json
+            email_data = json.loads(content)
+            
+            # Extract and clean fields
+            parsed_data = {
+                'subject_line': email_data.get('subject_line', 'No subject generated'),
+                'email_body': email_data.get('email_body', ''),
+                'personalization_score': email_data.get('personalization_score', 0.0),
+                'pain_points_addressed': email_data.get('pain_points_addressed', []),
+                'calendly_integration': email_data.get('calendly_integration', ''),
+                'format': 'json'
+            }
+            
+        elif 'subject_line:' in content or 'email_body:' in content:
+            # Key-value format - parse manually
+            lines = content.split('\n')
+            parsed_data = {
+                'subject_line': 'No subject generated',
+                'email_body': '',
+                'personalization_score': 0.0,
+                'pain_points_addressed': [],
+                'calendly_integration': '',
+                'format': 'key_value'
+            }
+            
+            current_key = None
+            current_value = []
+            
+            for line in lines:
+                line = line.strip()
+                if ':' in line and not line.startswith(' '):
+                    # Save previous key-value pair
+                    if current_key and current_value:
+                        if current_key == 'subject_line':
+                            parsed_data['subject_line'] = ' '.join(current_value).strip('"')
+                        elif current_key == 'email_body':
+                            parsed_data['email_body'] = ' '.join(current_value).strip('"')
+                        elif current_key == 'personalization_score':
+                            try:
+                                parsed_data['personalization_score'] = float(' '.join(current_value).strip('"'))
+                            except:
+                                parsed_data['personalization_score'] = 0.0
+                        elif current_key == 'pain_points_addressed':
+                            points = ' '.join(current_value).strip('[]"').split(',')
+                            parsed_data['pain_points_addressed'] = [p.strip().strip('"') for p in points if p.strip()]
+                        elif current_key == 'calendly_integration':
+                            parsed_data['calendly_integration'] = ' '.join(current_value).strip('"')
+                    
+                    # Start new key-value pair
+                    if ':' in line:
+                        current_key = line.split(':')[0].strip()
+                        current_value = [line.split(':', 1)[1].strip()] if ':' in line else []
+                else:
+                    # Continue current value
+                    if current_key:
+                        current_value.append(line)
+            
+            # Save last key-value pair
+            if current_key and current_value:
+                if current_key == 'subject_line':
+                    parsed_data['subject_line'] = ' '.join(current_value).strip('"')
+                elif current_key == 'email_body':
+                    parsed_data['email_body'] = ' '.join(current_value).strip('"')
+                elif current_key == 'personalization_score':
+                    try:
+                        parsed_data['personalization_score'] = float(' '.join(current_value).strip('"'))
+                    except:
+                        parsed_data['personalization_score'] = 0.0
+                elif current_key == 'pain_points_addressed':
+                    points = ' '.join(current_value).strip('[]"').split(',')
+                    parsed_data['pain_points_addressed'] = [p.strip().strip('"') for p in points if p.strip()]
+                elif current_key == 'calendly_integration':
+                    parsed_data['calendly_integration'] = ' '.join(current_value).strip('"')
+            
+        else:
+            # Raw text - treat as email body
+            parsed_data = {
+                'subject_line': 'No subject generated',
+                'email_body': content,
+                'personalization_score': 0.0,
+                'pain_points_addressed': [],
+                'calendly_integration': '',
+                'format': 'raw_text'
+            }
+        
+        # Clean up email body - handle escape characters
+        if parsed_data['email_body']:
+            # Replace escaped newlines and quotes
+            parsed_data['email_body'] = (
+                parsed_data['email_body']
+                .replace('\\n', '\n')
+                .replace('\\"', '"')
+                .replace('\\t', '\t')
+                .strip()
+            )
+        
+        return parsed_data
+        
+    except Exception as e:
+        # Fallback parsing
+        return {
+            'subject_line': 'Error parsing subject',
+            'email_body': str(email_response.content) if email_response.content else 'Error: No content available',
+            'personalization_score': 0.0,
+            'pain_points_addressed': [],
+            'calendly_integration': '',
+            'format': 'error',
+            'parse_error': str(e)
+        }
+
+def show_ai_studio():
+    """Display AI engine interface."""
+    st.markdown('<h1 class="main-header">AI Studio</h1>', unsafe_allow_html=True)
+    
+    # AI capabilities overview
+    st.markdown("### 🧠 AI Capabilities")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### ✨ Content Generation")
+        st.markdown("- Personalized cold emails")
+        st.markdown("- Follow-up sequences")
+        st.markdown("- Response analysis")
+        st.markdown("- Lead scoring")
+    
+    with col2:
+        st.markdown("#### 🎯 Personalization")
+        st.markdown("- Company research")
+        st.markdown("- Industry insights")
+        st.markdown("- Pain point analysis")
+        st.markdown("- Behavioral patterns")
+    
+    # Test AI generation
+    st.markdown("### 🧪 Test AI Generation")
+    
+    # Initialize session state for better control
+    if 'email_generated' not in st.session_state:
+        st.session_state.email_generated = False
+    if 'generated_email_data' not in st.session_state:
+        st.session_state.generated_email_data = None
+    
+    with st.form("ai_test"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            lead_name = st.text_input("Lead Name", value="John Smith")
+            company = st.text_input("Company", value="TechCorp Inc.")
+            job_title = st.text_input("Job Title", value="VP of Engineering")
+        
+        with col2:
+            industry = st.text_input("Industry", value="Technology")
+            pain_points = st.text_area("Pain Points", value="Scaling infrastructure, Team productivity")
+            email_type = st.selectbox("Email Type", ["Cold Email", "Follow-up", "Re-engagement"])
+        
+        generate_clicked = st.form_submit_button("🤖 Generate Email")
+        
+        if generate_clicked:
+            try:
+                # Create sample lead data
+                from integrations import LeadData
+                
+                lead_data = LeadData(
+                    name=lead_name,
+                    email="test@example.com",
+                    company=company,
+                    job_title=job_title,
+                    company_description=f"A {industry} company",
+                    pain_points=[p.strip() for p in pain_points.split(',')] if pain_points else []
+                )
+                
+                with st.spinner("AI is generating your personalized email..."):
+                    # Generate email
+                    from ai_engine import AIEngine
+                    ai_engine = AIEngine()
+                    lead_score, email_response = asyncio.run(ai_engine.process_lead(lead_data))
+                    
+                    if email_response.success:
+                        # Store the results in session state
+                        st.session_state.email_generated = True
+                        st.session_state.generated_email_data = {
+                            'lead_score': lead_score,
+                            'email_response': email_response,
+                            'form_data': {
+                                'name': lead_name,
+                                'company': company,
+                                'job_title': job_title,
+                                'industry': industry,
+                                'pain_points': pain_points
+                            }
+                        }
+                        st.success("✅ AI Email Generated Successfully!")
+                        
+                    else:
+                        st.error(f"AI generation failed: {email_response.error_message}")
+                        st.session_state.email_generated = False
+                        
+            except Exception as e:
+                st.error(f"Failed to generate email: {e}")
+                st.session_state.email_generated = False
+    
+    # Display generated email outside the form (only when generated)
+    if st.session_state.email_generated and st.session_state.generated_email_data:
+        st.markdown("---")
+        st.markdown("### 📧 Generated Email Results")
+        
+        data = st.session_state.generated_email_data
+        lead_score = data['lead_score']
+        email_response = data['email_response']
+        
+        # Display lead score metrics
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Lead Score", f"{lead_score.score:.2f}")
+        with col2:
+            st.metric("Confidence", f"{lead_score.confidence:.2f}")
+        
+        # Parse and display email content using the new parse function
+        parsed_email = parse_email_response(email_response)
+        
+        if parsed_email:
+            # Professional Email Display
+            st.markdown("#### 📨 **Email Preview**")
+            
+            # Subject Line - Separate text box
+            st.markdown("**📝 Subject Line:**")
+            st.text_input(
+                "Subject",
+                value=parsed_email['subject_line'],
+                key="subject_display",
+                disabled=True
+            )
+            
+            # Email Body - Separate section in a text box with black background
+            st.markdown("**✉️ Email Content:**")
+            st.markdown("""
+            <style>
+                .stTextArea textarea {
+                    background-color: #1a1a1a !important;
+                    color: white !important;
+                    border: 1px solid #444 !important;
+                }
+                .stTextArea textarea:focus {
+                    background-color: #1a1a1a !important;
+                    color: white !important;
+                    border: 1px solid #666 !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+            st.text_area(
+                "Generated Email",
+                value=parsed_email['email_body'],
+                height=300,
+                key="formatted_email_display",
+                disabled=True
+            )
+            
+            # AI Statistics - Separate section with better colors
+            st.markdown("#### 📊 **AI Statistics**")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                personalization_score = parsed_email.get('personalization_score', 0)
+                if isinstance(personalization_score, float):
+                    st.metric(
+                        "🎯 Personalization Score", 
+                        f"{personalization_score:.1%}",
+                        help="How well the email is personalized for this lead"
+                    )
+                else:
+                    st.metric("🎯 Personalization Score", f"{personalization_score}")
+            
+            with col2:
+                pain_points = parsed_email.get('pain_points_addressed', [])
+                st.metric(
+                    "💡 Pain Points Addressed", 
+                    len(pain_points),
+                    help="Number of pain points identified and addressed"
+                )
+            
+            with col3:
+                has_calendly = "calendly" in parsed_email.get('email_body', '').lower()
+                st.metric(
+                    "📅 Calendly Integration", 
+                    "✅ Yes" if has_calendly else "❌ No",
+                    help="Whether the email includes a Calendly link"
+                )
+            
+            # Pain Points Addressed - Better visibility
+            if parsed_email.get('pain_points_addressed'):
+                st.markdown("**🎯 Pain Points Addressed:**")
+                for point in parsed_email['pain_points_addressed']:
+                    st.markdown(f"""
+                    <div style="
+                        background-color: #28A745;
+                        color: white;
+                        padding: 15px;
+                        border-radius: 8px;
+                        margin: 10px 0;
+                        border-left: 4px solid #1E7E34;
+                        font-weight: 500;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    ">
+                    💡 {point}
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            # Calendly Integration Note - Better visibility
+            calendly_note = parsed_email.get('calendly_integration', '')
+            if calendly_note:
+                st.markdown("**📅 Calendly Integration Strategy:**")
+                st.markdown(f"""
+                <div style="
+                    background-color: #FFC107;
+                    color: #212529;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin: 10px 0;
+                    border-left: 4px solid #E0A800;
+                    font-weight: 500;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                ">
+                💡 {calendly_note}
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Parse format info for debugging
+            if parsed_email.get('format') == 'error':
+                st.warning(f"⚠️ Parse warning: {parsed_email.get('parse_error', 'Unknown error')}")
+        else:
+            # Fallback display
+            st.error("❌ Failed to parse email response")
+            st.markdown("**Raw Content:**")
+            st.text_area("Generated Email", email_response.content, height=300, key="fallback_email_display")
+        
+        # Display AI Recommendations with better readability
+        if lead_score.recommendations:
+            st.markdown("#### 💡 **AI Recommendations**")
+            for i, rec in enumerate(lead_score.recommendations):
+                st.markdown(f"""
+                <div style="
+                    background-color: #2E86AB;
+                    color: white;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin: 10px 0;
+                    border-left: 4px solid #1E5F8A;
+                    font-weight: 500;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                ">
+                <strong>{i+1}.</strong> {rec}
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Action Buttons
+        st.markdown("---")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("📋 Copy Email", key="copy_email_btn"):
+                st.success("Email copied to clipboard! (Feature would work in production)")
+        
+        with col2:
+            if st.button("📤 Send Test Email", key="send_test_email_btn"):
+                st.info("Test email feature coming soon!")
+        
+        with col3:
+            if st.button("🔄 Generate New Email", key="clear_and_regenerate"):
+                # Clear session state
+                st.session_state.email_generated = False
+                st.session_state.generated_email_data = None
+                st.rerun()
+    
+    # AI performance metrics
+    st.markdown("---")
+    st.markdown("### 📊 AI Performance")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Emails Generated", "1,247", "+15%")
+        st.metric("Personalization Score", "8.7/10", "+0.3")
+    
+    with col2:
+        st.metric("Response Rate", "12.3%", "+2.1%")
+        st.metric("Meeting Bookings", "23", "+5")
+    
+    with col3:
+        st.metric("AI Confidence", "89%", "+3%")
+        st.metric("Processing Time", "2.3s", "-0.5s")
+
 def show_campaigns():
     """Display campaign management interface."""
     st.markdown('<h1 class="main-header">📧 Campaigns</h1>', unsafe_allow_html=True)
@@ -1046,6 +1773,17 @@ def show_campaigns():
         st.markdown("Re-engage dormant leads")
         if st.button("Use Template", key="re_engagement"):
             st.info("Template feature coming soon!")
+
+def show_campaign_builder():
+    """Display the campaign builder page."""
+    st.markdown('<h1 class="main-header">Campaign Builder</h1>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="content-card">
+        <h3>Create New Campaign</h3>
+        <p>Build and configure your email campaigns</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def show_ai_engine():
     """Display AI engine interface."""
@@ -1205,48 +1943,92 @@ def show_ai_engine():
                     # Display email
                     st.markdown("#### 📧 Generated Email")
                     
-                    # Parse JSON response if needed
+                    # Replace the email display section in your existing show_ai_studio function
+                    # Find this section and replace it with the code below:
+
+                    # Parse and display email content (REPLACE THIS SECTION)
                     try:
                         if email_response.content and email_response.content.strip().startswith('{'):
                             # Parse JSON response
                             import json
-                            email_data = json.loads(email_response.content)
                             
-                            # Display structured email
-                            col1, col2 = st.columns(2)
+                            # Clean JSON content (remove markdown formatting)
+                            clean_content = email_response.content.strip()
+                            if clean_content.startswith('```json'):
+                                clean_content = clean_content.replace('```json', '').replace('```', '').strip()
+                            
+                            email_data = json.loads(clean_content)
+                            
+                            # Display structured email in professional format
+                            st.markdown("#### 📧 Generated Email")
+                            
+                            # Subject Line
+                            subject = email_data.get('subject_line', 'No subject')
+                            st.markdown("**Subject:**")
+                            st.info(f"📧 {subject}")
+                            
+                            # Email Body - Display as formatted text, not JSON
+                            st.markdown("**Email Content:**")
+                            email_body = email_data.get('email_body', email_response.content)
+                            
+                            # Replace \\n with actual line breaks and display as markdown
+                            formatted_body = email_body.replace('\\n\\n', '\n\n').replace('\\n', '\n')
+                            
+                            # Display the email body as formatted text
+                            st.markdown(f"""
+                    **To:** John Smith  
+                    **From:** Your Name  
+                    **Subject:** {subject}
+
+                    ---
+
+                    {formatted_body}
+                            """)
+                            
+                            # Display email metrics
+                            col1, col2, col3 = st.columns(3)
                             with col1:
-                                st.markdown("**Subject Line:**")
-                                st.success(email_data.get('subject_line', 'No subject'))
+                                personalization_score = email_data.get('personalization_score', 0)
+                                st.metric("Personalization Score", f"{personalization_score:.2f}" if isinstance(personalization_score, float) else str(personalization_score))
                             
                             with col2:
-                                st.markdown("**Personalization Score:**")
-                                st.metric("Score", f"{email_data.get('personalization_score', 0):.2f}")
+                                pain_points = email_data.get('pain_points_addressed', [])
+                                st.metric("Pain Points Addressed", len(pain_points))
                             
-                            st.markdown("**Email Body:**")
-                            email_body = email_data.get('email_body', email_response.content)
-                            st.text_area("Email Content", email_body, height=300, key="email_display")
+                            with col3:
+                                has_calendly = 'calendly' in email_body.lower()
+                                st.metric("Calendly Included", "✅ Yes" if has_calendly else "❌ No")
                             
-                            # Display additional info
-                            if email_data.get('pain_points_addressed'):
+                            # Display pain points as bullet points
+                            if pain_points:
                                 st.markdown("**Pain Points Addressed:**")
-                                for point in email_data['pain_points_addressed']:
-                                    st.info(f"• {point}")
+                                for point in pain_points:
+                                    st.markdown(f"• {point}")
                             
-                            if email_data.get('calendly_integration'):
-                                st.info(f"📅 **Calendly Integration:** {email_data['calendly_integration']}")
+                            # Display Calendly integration note
+                            calendly_note = email_data.get('calendly_integration', '')
+                            if calendly_note:
+                                st.markdown("**Calendly Integration:**")
+                                st.success(f"📅 {calendly_note}")
                             
                         else:
-                            # Display raw content
-                            st.text_area("Email Content", email_response.content, height=300, key="email_display")
+                            # Display raw content if not JSON
+                            st.markdown("**Email Content:**")
+                            st.markdown(email_response.content)
+                            
                     except json.JSONDecodeError:
-                        # Fallback to raw content if JSON parsing fails
-                        st.text_area("Email Content", email_response.content, height=300, key="email_display")
-                    
-                    # Display recommendations
+                        # Fallback - display raw content
+                        st.markdown("**Email Content:**")
+                        st.markdown(email_response.content)
+
+                    # Display recommendations (REPLACE THE RECOMMENDATIONS SECTION)
                     if lead_score.recommendations:
                         st.markdown("#### 💡 AI Recommendations")
-                        for rec in lead_score.recommendations:
-                            st.info(rec)
+                        for i, rec in enumerate(lead_score.recommendations, 1):
+                            st.markdown(f"**{i}.** {rec}")
+                    else:
+                        st.markdown("#### 💡 AI Recommendations")
+                        st.info("No specific recommendations available for this lead.")
                     
                     # Send test email
                     if st.button("📤 Send Test Email", key="send_test_email"):
@@ -1282,7 +2064,7 @@ def show_ai_engine():
 
 def show_settings():
     """Display settings and configuration interface."""
-    st.markdown('<h1 class="main-header">⚙️ Settings</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">Settings</h1>', unsafe_allow_html=True)
     
     # User profile
     st.markdown("### 👤 User Profile")
@@ -1308,6 +2090,13 @@ def show_settings():
                            key="profile_tier")
                 st.checkbox("Account Active", value=user.is_active, key="profile_active")
             
+            # Calendly Integration
+            st.markdown("### 📅 Calendly Integration")
+            calendly_link = st.text_input("Your Calendly Link", 
+                                        value=getattr(user, 'calendly_link', ''),
+                                        placeholder="https://calendly.com/yourusername",
+                                        help="This link will be automatically included in AI-generated emails")
+            
             if st.button("💾 Save Profile Changes"):
                 try:
                     updates = {
@@ -1315,7 +2104,8 @@ def show_settings():
                         'company': st.session_state.profile_company,
                         'role': st.session_state.profile_role,
                         'subscription_tier': st.session_state.profile_tier,
-                        'is_active': st.session_state.profile_active
+                        'is_active': st.session_state.profile_active,
+                        'calendly_link': calendly_link
                     }
                     
                     asyncio.run(db_manager.update_user(user_id, updates))
@@ -1327,7 +2117,7 @@ def show_settings():
             st.warning("User profile not found.")
             
     except Exception as e:
-        st.error(f"Failed to load user profile: {e}")
+        st.error(f"Failed to update profile: {e}")
     
     # Email settings
     st.markdown("### 📧 Email Settings")
@@ -1401,7 +2191,7 @@ def show_settings():
 
 def show_analytics():
     """Display analytics and reporting interface."""
-    st.markdown('<h1 class="main-header">📈 Analytics</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">Analytics</h1>', unsafe_allow_html=True)
     
     # Date range selector
     col1, col2, col3 = st.columns([1, 1, 2])

@@ -166,17 +166,20 @@ class AuthManager:
             
             flow.redirect_uri = redirect_uri
             
-            # Extract authorization code from the callback URL
+            # Extract authorization code - handle both full URLs and just the code
+            if "code=" in authorization_response:
+                # It's a full callback URL, extract the code
+                parsed_url = urlparse(authorization_response)
+                query_params = parse_qs(parsed_url.query)
+                authorization_code = query_params.get('code', [None])[0]
+            else:
+                # It's just the authorization code
+                authorization_code = authorization_response.strip()
             
-            # Parse the callback URL to extract the authorization code
-            parsed_url = urlparse(authorization_response)
-            query_params = parse_qs(parsed_url.query)
-            
-            authorization_code = query_params.get('code', [None])[0]
             if not authorization_code:
-                raise ValueError("No authorization code found in callback URL")
+                raise ValueError("No authorization code provided")
             
-            logger.info(f"Extracted authorization code: {authorization_code[:20]}...")
+            logger.info(f"Processing authorization code: {authorization_code[:20]}...")
             
             # Exchange authorization code for tokens
             flow.fetch_token(code=authorization_code)
