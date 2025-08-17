@@ -13,7 +13,7 @@ import logging
 import json
 import time
 import base64
-import email
+import email.mime.text
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 from dataclasses import dataclass

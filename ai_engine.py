@@ -1133,6 +1133,7 @@ class AIEngine:
         - Value Proposition: {user_settings.get('value_proposition', 'To be customized')}
         - Calendly Link: {user_settings.get('calendly_link', 'To be included')}
         - Sales Approach: {user_settings.get('sales_approach', 'Professional and consultative')}
+        - User Name: {user_settings.get('user_name', 'Your Name')}
 
         REQUIREMENTS:
         1. Create a compelling subject line (max 60 characters)
@@ -1143,6 +1144,7 @@ class AIEngine:
         6. Use their name naturally throughout
         7. Reference their company and role specifically
         8. Avoid generic templates - make it completely unique
+        9. Use the actual user name "{user_settings.get('user_name', 'Your Name')}" in the signature, NOT [Your Name]
 
         FORMAT YOUR RESPONSE AS JSON:
         {{
@@ -1459,19 +1461,20 @@ class AIEngine:
             # Score the lead
             lead_score = await self.score_lead(lead_data)
             
-            # Get user's Calendly link from database
+            # Get user's Calendly link from session state (passed from app.py)
             user_calendly = None
             try:
-                # This would get the user's Calendly link from their profile
-                # For now, we'll use a placeholder
-                user_calendly = "https://calendly.com/yourusername"
+                # Import streamlit to access session state
+                import streamlit as st
+                user_calendly = st.session_state.get('calendly_link')
             except:
                 pass
             
             # Generate personalized email with Calendly integration
             user_settings = {
                 'calendly_link': user_calendly,
-                'include_calendly': user_calendly is not None
+                'include_calendly': user_calendly is not None,
+                'user_name': st.session_state.get('user_name', 'Your Name')
             }
             
             email_response = await self.generate_cold_email(lead_data, user_settings)
